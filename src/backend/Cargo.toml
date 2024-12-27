@@ -1,0 +1,28 @@
+[package]
+name = "backend"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+alloy = { git = "https://github.com/ic-alloy/ic-alloy.git", tag = "v0.3.5-icp.1", default-features = false, features = [
+  "icp",
+  "sol-types",
+  "json",
+  "contract",
+] }
+anyhow = "1.0.95"
+candid = "0.10"
+getrandom = { version = "0.2.15", features = ["custom"] }
+ic-cdk = "0.17"
+ic-cdk-timers = "0.11.0"
+ic-stable-structures = "0.6.7"
+serde = "1.0.216"
+serde_bytes = "0.11.15"
+thiserror = "2.0.9"
+
+[build-dependencies]
+ic-cdk-bindgen = "0.1.3"
+dotenv = "0.15.0"
