@@ -14,6 +14,7 @@ alloy = { git = "https://github.com/ic-alloy/ic-alloy.git", tag = "v0.3.5-icp.1"
   "contract",
 ] }
 anyhow = "1.0.95"
+bincode = "1.3.3"
 candid = "0.10"
 getrandom = { version = "0.2.15", features = ["custom"] }
 ic-cdk = "0.17"

@@ -1,8 +1,8 @@
-pub mod rpc;
-pub mod state;
-pub mod types;
-pub mod util;
+pub mod controller;
+pub mod user_manager;
+pub mod user_types;
+pub mod user_utils;
 
-pub use state::*;
-pub use types::*;
-pub use util::*;
+pub use user_manager::UserManager;
+pub use user_types::{User, UserError};
+pub use user_utils::{auth_guard_eth, auth_guard_no_anon};

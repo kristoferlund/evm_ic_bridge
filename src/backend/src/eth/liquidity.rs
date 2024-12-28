@@ -44,6 +44,11 @@ async fn create_position(address: Address, hash: FixedBytes<32>) -> Result<u64> 
         bail!("Transaction has not enough confirmations");
     }
 
+    // Adding liquidity
+    STATE.with_borrow_mut(|state| {
+        state.total_liquidity = state.total_liquidity + tx.value;
+    });
+
     Ok(1)
 }
 
