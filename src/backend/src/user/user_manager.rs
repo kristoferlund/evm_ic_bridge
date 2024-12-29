@@ -19,7 +19,7 @@ impl UserManager {
                 return Err(UserError::AlreadyExists);
             }
             let user = UserStateTransitions::create(principal);
-            EventPublisher::publish(Event::CreateUser(principal));
+            EventPublisher::publish(Event::CreateUser(principal)).unwrap();
             Ok(user)
         })
     }
@@ -33,7 +33,7 @@ impl UserManager {
                 return Err(UserError::NotFound);
             }
             let user = UserStateTransitions::set_eth_address(principal, eth_address);
-            EventPublisher::publish(Event::RegisterEthAddress(principal, eth_address));
+            EventPublisher::publish(Event::RegisterEthAddress(principal, eth_address)).unwrap();
             Ok(user)
         })
     }

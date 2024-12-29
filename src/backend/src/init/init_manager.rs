@@ -23,11 +23,11 @@ impl InitManager {
     pub fn init(args: InitArgs) {
         init_signer();
         InitStateTransitions::init_and_upgrade(&args);
-        EventPublisher::publish(Event::Init(args));
+        EventPublisher::publish(Event::Init(args)).unwrap();
     }
 
     pub fn post_upgrade(args: InitArgs) {
         InitStateTransitions::init_and_upgrade(&args);
-        EventPublisher::publish(Event::PostUpgrade(args));
+        EventPublisher::publish(Event::PostUpgrade(args)).unwrap();
     }
 }

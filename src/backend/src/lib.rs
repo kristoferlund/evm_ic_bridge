@@ -1,3 +1,4 @@
+use eth_pool::EthPoolLiquidityPositionDto;
 use http_error::HttpError;
 use ic_cdk::export_candid;
 use ic_stable_structures::{
@@ -9,9 +10,7 @@ use state::state_types::State;
 use std::cell::RefCell;
 use user::User;
 
-pub mod alloy;
 pub mod declarations;
-pub mod eth;
 pub mod eth_pool;
 pub mod event;
 pub mod evm;

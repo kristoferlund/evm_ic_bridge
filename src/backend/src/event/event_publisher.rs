@@ -18,7 +18,7 @@ impl EventPublisher {
     pub fn publish(event: Event) -> Result<(), PublishEventError> {
         let encoded_event = bincode::serialize(&event)
             .map_err(|e| e.to_string())
-            .map_err(|e| PublishEventError::SerializationError(e))?;
+            .map_err(PublishEventError::SerializationError)?;
 
         EVENT_LOG
             .with_borrow_mut(|log| log.append(&encoded_event))

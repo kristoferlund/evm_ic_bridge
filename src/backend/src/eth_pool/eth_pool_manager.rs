@@ -1,8 +1,7 @@
-use super::{EthPoolError, EthPoolStateTransitions};
+use super::{eth_pool_types::EthPoolLiquidityPosition, EthPoolError, EthPoolStateTransitions};
 use crate::{
     event::{Event, EventPublisher},
     evm::utils::get_rpc_service,
-    state::state_types::EthLiquidityPosition,
     user::UserManager,
     STATE,
 };
@@ -20,7 +19,7 @@ impl EthPoolManager {
     pub async fn create_position(
         user_principal: Principal,
         hash: FixedBytes<32>,
-    ) -> Result<EthLiquidityPosition, EthPoolError> {
+    ) -> Result<EthPoolLiquidityPosition, EthPoolError> {
         let user = UserManager::get_by_principal(user_principal)?;
         let user_address = Address::from_slice(&user.eth_address);
 
@@ -63,20 +62,8 @@ impl EthPoolManager {
 
         // Adding liquidity
         let position = EthPoolStateTransitions::create_position(user_principal, tx.value);
-        EventPublisher::publish(Event::EThPoolCreatePosition(user_principal, tx.value));
+        EventPublisher::publish(Event::EThPoolCreatePosition(user_principal, tx.value)).unwrap();
 
         Ok(position)
     }
-
-    // async fn get_latest_block() -> Result<u64> {
-    //     let rpc_service = get_rpc_service();
-    //     let config = IcpConfig::new(rpc_service);
-    //     let provider = ProviderBuilder::new().on_icp(config);
-    //     let result = provider.get_block_number().await;
-    //
-    //     match result {
-    //         Ok(block) => Ok(block),
-    //         Err(e) => bail!(e.to_string()),
-    //     }
-    // }
 }

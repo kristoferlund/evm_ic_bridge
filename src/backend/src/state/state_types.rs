@@ -1,4 +1,7 @@
-use crate::user::user_types::{EthAddressBytes, User};
+use crate::{
+    eth_pool::EthPoolLiquidityPosition,
+    user::user_types::{EthAddressBytes, User},
+};
 use alloy::{primitives::U256, signers::icp::IcpSigner};
 use candid::Principal;
 use std::collections::HashMap;
@@ -18,11 +21,5 @@ pub struct State {
     pub total_liquidity: U256,
     pub last_claimed_fee_per_token: U256,
 
-    pub eth_liquidity_positions: HashMap<Principal, Vec<EthLiquidityPosition>>,
-}
-
-#[derive(Clone)]
-pub struct EthLiquidityPosition {
-    pub amount: U256,
-    pub last_claimed_fee_per_token: U256,
+    pub eth_pool_liquidity_positions: HashMap<Principal, Vec<EthPoolLiquidityPosition>>,
 }

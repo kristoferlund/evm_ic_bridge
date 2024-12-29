@@ -5,5 +5,4 @@ pub mod eth_pool_types;
 
 pub use eth_pool_manager::EthPoolManager;
 pub use eth_pool_state_transitions::EthPoolStateTransitions;
-pub use eth_pool_types::EthPoolError;
-
+pub use eth_pool_types::{EthPoolError, EthPoolLiquidityPosition, EthPoolLiquidityPositionDto};
