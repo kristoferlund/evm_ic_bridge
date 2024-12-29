@@ -1,11 +1,33 @@
-use super::user_types::{User, UserError};
-use crate::STATE;
+use super::{User, UserError};
+use crate::{
+    event::{Event, EventPublisher},
+    STATE,
+};
 use candid::Principal;
 
-pub struct UserManager {}
+pub enum UserManagerMode {
+    Normal, // Emit and store events
+    Replay, // Replay mode: no event emission
+}
+
+pub struct UserManager {
+    mode: UserManagerMode,
+}
 
 impl UserManager {
-    pub fn create(principal: Principal) -> Result<User, UserError> {
+    pub fn new() -> Self {
+        UserManager {
+            mode: UserManagerMode::Normal,
+        }
+    }
+
+    pub fn replay() -> Self {
+        UserManager {
+            mode: UserManagerMode::Replay,
+        }
+    }
+
+    pub fn create(&self, principal: Principal) -> Result<User, UserError> {
         if principal == Principal::anonymous() {
             return Err(UserError::InvalidPrincipal);
         }
@@ -15,19 +37,29 @@ impl UserManager {
             }
             let user = User::new();
             state.users.insert(principal, user.clone());
+            if matches!(self.mode, UserManagerMode::Normal) {
+                EventPublisher::publish(Event::CreateUser(principal));
+            }
             Ok(user)
         })
     }
 
-    pub fn set_eth_address(principal: Principal, eth_address: [u8; 20]) -> Result<User, UserError> {
+    pub fn set_eth_address(
+        &self,
+        principal: Principal,
+        eth_address: [u8; 20],
+    ) -> Result<User, UserError> {
         STATE.with_borrow_mut(|state| {
             let user = state.users.get_mut(&principal).ok_or(UserError::NotFound)?;
             user.eth_address = eth_address;
+            if matches!(self.mode, UserManagerMode::Normal) {
+                EventPublisher::publish(Event::RegisterEthAddress(principal, eth_address));
+            }
             Ok(user.clone())
         })
     }
 
-    pub fn get_by_principal(principal: Principal) -> Result<User, UserError> {
+    pub fn get_by_principal(&self, principal: Principal) -> Result<User, UserError> {
         STATE.with_borrow(|state| {
             state
                 .users

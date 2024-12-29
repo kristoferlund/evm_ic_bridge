@@ -1,9 +1,21 @@
 use super::InitArgs;
-use crate::{evm::utils::create_signer, state::state_types::State, STATE};
+use crate::{
+    event::{Event, EventPublisher},
+    evm::utils::create_signer,
+    state::state_types::State,
+    STATE,
+};
 use alloy::signers::Signer;
 use std::time::Duration;
 
-pub struct InitManager {}
+pub enum InitManagerMode {
+    Normal, // Emit and store events
+    Replay, // Replay mode: no event emission
+}
+
+pub struct InitManager {
+    mode: InitManagerMode,
+}
 
 pub fn init_signer() {
     ic_cdk_timers::set_timer(Duration::from_secs(0), || {
@@ -22,17 +34,31 @@ pub fn init_signer() {
 }
 
 impl InitManager {
-    pub fn init(args: &InitArgs) {
+    pub fn new() -> Self {
+        InitManager {
+            mode: InitManagerMode::Normal,
+        }
+    }
+
+    pub fn replay() -> Self {
+        InitManager {
+            mode: InitManagerMode::Replay,
+        }
+    }
+
+    pub fn init(&self, args: InitArgs) {
         let InitArgs {
             eth_min_confirmations,
         } = args;
 
         STATE.with_borrow_mut(|state| {
             *state = State {
-                eth_min_confirmations: *eth_min_confirmations,
+                eth_min_confirmations,
                 ..State::default()
             };
         });
+
+        EventPublisher::publish(Event::Init(args));
 
         init_signer();
     }

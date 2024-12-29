@@ -1,8 +1,7 @@
+use super::{UserError, UserManager};
 use crate::http_error::HttpError;
 use candid::Principal;
 use ic_stable_structures::storable::Blob;
-
-use super::{UserError, UserManager};
 
 pub fn auth_guard_no_anon() -> Result<(), HttpError> {
     match ic_cdk::caller() {
@@ -17,7 +16,8 @@ pub fn auth_guard_eth() -> Result<(), HttpError> {
     auth_guard_no_anon()?;
 
     let caller = ic_cdk::caller();
-    UserManager::get_by_principal(caller).map_err(|_| {
+    let user_manager = UserManager::new();
+    user_manager.get_by_principal(caller).map_err(|_| {
         HttpError::unauthorized("No Ethereum address registered for caller.".to_string())
     })?;
 

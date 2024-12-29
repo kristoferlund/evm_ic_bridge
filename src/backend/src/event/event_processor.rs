@@ -7,13 +7,13 @@ impl EventProcessor {
     pub fn process(event: Event) {
         match event {
             Event::Init(args) => {
-                InitManager::init(&args);
+                InitManager::replay().init(args);
             }
             Event::CreateUser(principal) => {
-                UserManager::create(principal);
+                UserManager::replay().create(principal);
             }
             Event::RegisterEthAddress(principal, eth_address) => {
-                UserManager::set_eth_address(principal, eth_address);
+                UserManager::replay().set_eth_address(principal, eth_address);
             }
         }
     }
