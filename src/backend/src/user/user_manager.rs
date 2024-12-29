@@ -1,4 +1,4 @@
-use super::{User, UserError};
+use super::{user_types::EthAddressBytes, User, UserError};
 use crate::{
     event::{Event, EventPublisher},
     STATE,
@@ -47,11 +47,12 @@ impl UserManager {
     pub fn set_eth_address(
         &self,
         principal: Principal,
-        eth_address: [u8; 20],
+        eth_address: EthAddressBytes,
     ) -> Result<User, UserError> {
         STATE.with_borrow_mut(|state| {
             let user = state.users.get_mut(&principal).ok_or(UserError::NotFound)?;
             user.eth_address = eth_address;
+            state.users_by_eth_address.insert(eth_address, principal);
             if matches!(self.mode, UserManagerMode::Normal) {
                 EventPublisher::publish(Event::RegisterEthAddress(principal, eth_address));
             }

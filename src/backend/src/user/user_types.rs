@@ -12,7 +12,7 @@ pub enum UserError {
     NotFound,
 }
 
-type EthAddressBytes = [u8; 20];
+pub type EthAddressBytes = [u8; 20];
 
 #[derive(CandidType, Deserialize, Debug, Clone, Default)]
 pub struct User {

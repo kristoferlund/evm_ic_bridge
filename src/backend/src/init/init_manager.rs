@@ -25,7 +25,7 @@ pub fn init_signer() {
 
             STATE.with_borrow_mut(|state| {
                 state.signer = Some(signer);
-                state.canister_eth_address = Some(address);
+                state.canister_eth_address = Some(address.into_array());
             });
 
             ic_cdk::println!("Initialising signer for address: {}", address);
