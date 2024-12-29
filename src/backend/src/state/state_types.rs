@@ -16,10 +16,13 @@ pub struct State {
     pub users_by_eth_address: HashMap<EthAddressBytes, Principal>,
 
     pub total_liquidity: U256,
-    pub last_claimed_fee_per_token: u32,
+    pub last_claimed_fee_per_token: U256,
+
+    pub eth_liquidity_positions: HashMap<Principal, Vec<EthLiquidityPosition>>,
 }
 
+#[derive(Clone)]
 pub struct EthLiquidityPosition {
-    pub liquidity: U256,
+    pub amount: U256,
     pub last_claimed_fee_per_token: U256,
 }

@@ -1,10 +1,9 @@
-use crate::STATE;
 use alloy::{
-    primitives::Address,
     signers::icp::IcpSigner,
     transports::icp::{RpcApi, RpcService},
 };
-// ICP uses different ECDSA key names for mainnet and local
+
+// IC uses different ECDSA key names for mainnet and local
 // development.
 pub fn get_ecdsa_key_name() -> String {
     #[allow(clippy::option_env_unwrap)]
@@ -28,11 +27,11 @@ pub async fn create_signer() -> IcpSigner {
     IcpSigner::new(vec![], &ecdsa_key_name, None).await.unwrap()
 }
 
-pub fn get_signer() -> (IcpSigner, Address) {
-    STATE.with_borrow(|state| {
-        (
-            state.signer.as_ref().unwrap().clone(),
-            state.canister_eth_address.unwrap(),
-        )
-    })
-}
+// pub fn get_signer() -> (IcpSigner, Address) {
+//     STATE.with_borrow(|state| {
+//         (
+//             state.signer.as_ref().unwrap().clone(),
+//             state.canister_eth_address.unwrap(),
+//         )
+//     })
+// }

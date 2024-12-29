@@ -1,6 +1,6 @@
 use super::Event;
 use crate::{
-    init::init_state_transitions::InitStateTransitions,
+    eth_pool::EthPoolStateTransitions, init::init_state_transitions::InitStateTransitions,
     user::user_state_transitions::UserStateTransitions,
 };
 
@@ -20,6 +20,9 @@ impl EventProcessor {
             }
             Event::RegisterEthAddress(principal, eth_address) => {
                 UserStateTransitions::set_eth_address(principal, eth_address);
+            }
+            Event::EThPoolCreatePosition(principal, value) => {
+                EthPoolStateTransitions::create_position(principal, value);
             }
         }
     }

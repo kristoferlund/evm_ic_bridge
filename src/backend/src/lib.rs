@@ -9,6 +9,7 @@ use state::state_types::State;
 use std::cell::RefCell;
 use user::User;
 
+pub mod alloy;
 pub mod declarations;
 pub mod eth;
 pub mod eth_pool;
@@ -19,6 +20,7 @@ pub mod init;
 pub mod siwe;
 pub mod state;
 pub mod user;
+pub mod utils;
 
 type Memory = VirtualMemory<DefaultMemoryImpl>;
 

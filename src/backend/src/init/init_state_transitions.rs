@@ -1,8 +1,6 @@
-use alloy::signers::icp::IcpSigner;
-
-use crate::{state::state_types::State, user::user_types::EthAddressBytes, STATE};
-
 use super::InitArgs;
+use crate::{state::state_types::State, user::user_types::EthAddressBytes, STATE};
+use alloy::signers::icp::IcpSigner;
 
 pub struct InitStateTransitions {}
 
