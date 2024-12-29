@@ -1,5 +1,6 @@
 pub mod controller;
 pub mod init_manager;
+pub mod init_state_transitions;
 pub mod init_types;
 
 pub use init_manager::InitManager;

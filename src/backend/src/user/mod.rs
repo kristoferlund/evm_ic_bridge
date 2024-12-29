@@ -1,5 +1,6 @@
 pub mod controller;
 pub mod user_manager;
+pub mod user_state_transitions;
 pub mod user_types;
 pub mod user_utils;
 

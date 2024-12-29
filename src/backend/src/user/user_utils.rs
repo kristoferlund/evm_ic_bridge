@@ -16,8 +16,7 @@ pub fn auth_guard_eth() -> Result<(), HttpError> {
     auth_guard_no_anon()?;
 
     let caller = ic_cdk::caller();
-    let user_manager = UserManager::new();
-    user_manager.get_by_principal(caller).map_err(|_| {
+    UserManager::get_by_principal(caller).map_err(|_| {
         HttpError::unauthorized("No Ethereum address registered for caller.".to_string())
     })?;
 

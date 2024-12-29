@@ -1,66 +1,44 @@
-use super::{user_types::EthAddressBytes, User, UserError};
+use super::{
+    user_state_transitions::UserStateTransitions, user_types::EthAddressBytes, User, UserError,
+};
 use crate::{
     event::{Event, EventPublisher},
     STATE,
 };
 use candid::Principal;
 
-pub enum UserManagerMode {
-    Normal, // Emit and store events
-    Replay, // Replay mode: no event emission
-}
-
-pub struct UserManager {
-    mode: UserManagerMode,
-}
+pub struct UserManager {}
 
 impl UserManager {
-    pub fn new() -> Self {
-        UserManager {
-            mode: UserManagerMode::Normal,
-        }
-    }
-
-    pub fn replay() -> Self {
-        UserManager {
-            mode: UserManagerMode::Replay,
-        }
-    }
-
-    pub fn create(&self, principal: Principal) -> Result<User, UserError> {
+    pub fn create(principal: Principal) -> Result<User, UserError> {
         if principal == Principal::anonymous() {
             return Err(UserError::InvalidPrincipal);
         }
-        STATE.with_borrow_mut(|state| {
+        STATE.with_borrow(|state| {
             if state.users.contains_key(&principal) {
                 return Err(UserError::AlreadyExists);
             }
-            let user = User::new();
-            state.users.insert(principal, user.clone());
-            if matches!(self.mode, UserManagerMode::Normal) {
-                EventPublisher::publish(Event::CreateUser(principal));
-            }
+            let user = UserStateTransitions::create(principal);
+            EventPublisher::publish(Event::CreateUser(principal));
             Ok(user)
         })
     }
 
     pub fn set_eth_address(
-        &self,
         principal: Principal,
         eth_address: EthAddressBytes,
     ) -> Result<User, UserError> {
-        STATE.with_borrow_mut(|state| {
-            let user = state.users.get_mut(&principal).ok_or(UserError::NotFound)?;
-            user.eth_address = eth_address;
-            state.users_by_eth_address.insert(eth_address, principal);
-            if matches!(self.mode, UserManagerMode::Normal) {
-                EventPublisher::publish(Event::RegisterEthAddress(principal, eth_address));
+        STATE.with_borrow(|state| {
+            if !state.users.contains_key(&principal) {
+                return Err(UserError::NotFound);
             }
-            Ok(user.clone())
+            let user = UserStateTransitions::set_eth_address(principal, eth_address);
+            EventPublisher::publish(Event::RegisterEthAddress(principal, eth_address));
+            Ok(user)
         })
     }
 
-    pub fn get_by_principal(&self, principal: Principal) -> Result<User, UserError> {
+    pub fn get_by_principal(principal: Principal) -> Result<User, UserError> {
         STATE.with_borrow(|state| {
             state
                 .users
@@ -68,5 +46,9 @@ impl UserManager {
                 .cloned()
                 .ok_or(UserError::NotFound)
         })
+    }
+
+    pub fn exists(principal: Principal) -> bool {
+        STATE.with_borrow(|state| state.users.contains_key(&principal))
     }
 }

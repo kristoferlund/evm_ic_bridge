@@ -14,6 +14,8 @@ pub enum UserError {
 
 pub type EthAddressBytes = [u8; 20];
 
+pub const EMPTY_ETH_ADDRESS: EthAddressBytes = [0; 20];
+
 #[derive(CandidType, Deserialize, Debug, Clone, Default)]
 pub struct User {
     pub eth_address: EthAddressBytes,

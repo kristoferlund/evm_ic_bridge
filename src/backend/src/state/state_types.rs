@@ -9,8 +9,8 @@ pub struct State {
     pub eth_min_confirmations: u64,
 
     // Runtime
-    pub signer: Option<IcpSigner>,
     pub canister_eth_address: Option<EthAddressBytes>,
+    pub signer: Option<IcpSigner>,
 
     pub users: HashMap<Principal, User>,
     pub users_by_eth_address: HashMap<EthAddressBytes, Principal>,
