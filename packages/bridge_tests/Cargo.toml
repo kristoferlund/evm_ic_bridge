@@ -1,29 +1,29 @@
 [package]
-name = "catts_engine_tests"
+name = "bridge_tests"
 version = "0.0.1"
 edition = "2021"
 authors = ["Kristofer Lund <kristofer@kristoferlund.se>"]
 description = ""
 license = "MIT"
-homepage = "https://github.com/c-atts"
-repository = "https://github.com/c-atts"
+homepage = "https://github.com"
+repository = "https://github.com"
 
 [lib]
 path = "src/lib.rs"
 
 [dependencies]
-ic-cdk = "0.15.0"
+ic-cdk = "0.17.0"
 candid = "0.10.0"
-serde = "1.0.193"
-pocket-ic = "3.1.0"
-ethers = "2.0.10"
+serde = "1.0.216"
+pocket-ic = "6.0.0"
+ethers = "2.0.14"
 hex = "0.4.3"
 ic-agent = "0.36.0"
-ic_siwe = "0.0.7"
+ic_siwe = "0.1.1"
 siwe = "0.6"
 rand = "0.8.4"
 ring = "0.17.7"
 
 
 [dev-dependencies]
-pocket-ic = "3.1.0"
+pocket-ic = "6.0.0"

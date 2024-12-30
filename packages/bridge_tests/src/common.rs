@@ -1,11 +1,11 @@
 use candid::{decode_one, encode_one, CandidType, Principal};
-use pocket_ic::{PocketIc, WasmResult};
+use pocket_ic::{PocketIc, PocketIcBuilder, WasmResult};
 use serde::{Deserialize, Serialize};
 use std::{fs, time::Duration};
 
 use crate::types::{RpcError, RpcResult};
 
-pub const CATTS_ENGINE_WASM: &str = "../../target/wasm32-wasi/release/catts_engine.wasm.gz";
+pub const BRIDGE_ENGINE_WASM: &str = "../../target/wasm32-unknown-unknown/release/bridge.wasm.gz";
 pub const IC_SIWE_WASM: &str = "../ic_siwe_provider/ic_siwe_provider.wasm.gz";
 
 #[derive(CandidType, Debug, Clone, PartialEq, Deserialize)]
@@ -30,14 +30,18 @@ pub struct SettingsInput {
 }
 
 #[derive(Serialize, Deserialize, CandidType)]
-struct CattsEngineSettings {
+struct BridgeSettings {
     ecdsa_key_id: String,
     siwe_provider_canister: String,
     evm_rpc_canister: String,
+    eth_min_confirmations: u64,
 }
 
 pub fn setup() -> (PocketIc, Principal, Principal) {
-    let ic = PocketIc::new();
+    let ic = PocketIcBuilder::new()
+        .with_ii_subnet() // to have tECDSA keys available
+        .with_application_subnet() // to deploy the test dapp
+        .build();
 
     // Install ic-siwe
     let ic_siwe_canister = ic.create_canister();
@@ -58,24 +62,25 @@ pub fn setup() -> (PocketIc, Principal, Principal) {
     let args = encode_one(ic_siwe_settings).unwrap();
     ic.install_canister(ic_siwe_canister, ic_siwe_wasm, args, None);
 
-    // Install catts_engine
-    let catts_engine_canister = ic.create_canister();
-    ic.add_cycles(catts_engine_canister, 2_000_000_000_000); // 2T Cycles
-    let catts_engine_wasm = fs::read(CATTS_ENGINE_WASM).expect("CATTS_ENGINE_WASM not found");
-    let catts_engine_settings = CattsEngineSettings {
-        ecdsa_key_id: "test_key".to_string(),
+    // Install bridge
+    let bridge_canister = ic.create_canister();
+    ic.add_cycles(bridge_canister, 2_000_000_000_000); // 2T Cycles
+    let bridge_wasm = fs::read(BRIDGE_ENGINE_WASM).expect("BRIDGE_ENGINE_WASM not found");
+    let bridge_settings = BridgeSettings {
+        ecdsa_key_id: "dfx_test_key".to_string(),
         siwe_provider_canister: ic_siwe_canister.to_string(),
         evm_rpc_canister: "not used yet".to_string(),
+        eth_min_confirmations: 12,
     };
-    let args = encode_one(catts_engine_settings).unwrap();
-    ic.install_canister(catts_engine_canister, catts_engine_wasm, args, None);
+    let args = encode_one(bridge_settings).unwrap();
+    ic.install_canister(bridge_canister, bridge_wasm, args, None);
 
     // Fast forward in time to allow the ic_siwe_provider_canister to be fully installed.
     for _ in 0..5 {
         ic.tick();
     }
 
-    (ic, ic_siwe_canister, catts_engine_canister)
+    (ic, ic_siwe_canister, bridge_canister)
 }
 
 pub fn update<T: CandidType + for<'de> Deserialize<'de>>(
@@ -92,7 +97,7 @@ pub fn update<T: CandidType + for<'de> Deserialize<'de>>(
     }
 }
 
-pub fn catts_update<T: CandidType + for<'de> Deserialize<'de>>(
+pub fn bridge_update<T: CandidType + for<'de> Deserialize<'de>>(
     ic: &PocketIc,
     canister: Principal,
     sender: Principal,
@@ -128,7 +133,7 @@ pub fn query<T: CandidType + for<'de> Deserialize<'de>>(
     }
 }
 
-pub fn catts_query<T: CandidType + for<'de> Deserialize<'de>>(
+pub fn bridge_query<T: CandidType + for<'de> Deserialize<'de>>(
     ic: &PocketIc,
     canister: Principal,
     sender: Principal,

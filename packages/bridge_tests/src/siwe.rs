@@ -17,7 +17,7 @@ use rand::Rng;
 
 use crate::{
     common::{query, update},
-    types::User,
+    types::SiweUser,
 };
 
 pub fn create_wallet() -> (ethers::signers::LocalWallet, String) {
@@ -129,7 +129,7 @@ pub fn full_login(
     );
 
     // Create a user in the catts canister
-    let _: User = update(
+    let _: SiweUser = update(
         ic,
         catts_canister,
         delegated_identity.sender().unwrap(),
