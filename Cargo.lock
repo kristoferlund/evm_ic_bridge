@@ -722,25 +722,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ace50bade8e6234aa140d9a2f552bbee1db4d353f69b8217bc503490fc1a9f26"
 
 [[package]]
-name = "backend"
-version = "0.1.0"
-dependencies = [
- "alloy",
- "anyhow",
- "bincode",
- "candid",
- "dotenv",
- "getrandom",
- "ic-cdk",
- "ic-cdk-bindgen",
- "ic-cdk-timers",
- "ic-stable-structures",
- "serde",
- "serde_bytes",
- "thiserror 2.0.9",
-]
-
-[[package]]
 name = "backtrace"
 version = "0.3.74"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -863,6 +844,25 @@ dependencies = [
  "glob",
  "threadpool",
  "zeroize",
+]
+
+[[package]]
+name = "bridge"
+version = "0.1.0"
+dependencies = [
+ "alloy",
+ "anyhow",
+ "bincode",
+ "candid",
+ "dotenv",
+ "getrandom",
+ "ic-cdk",
+ "ic-cdk-bindgen",
+ "ic-cdk-timers",
+ "ic-stable-structures",
+ "serde",
+ "serde_bytes",
+ "thiserror 2.0.9",
 ]
 
 [[package]]

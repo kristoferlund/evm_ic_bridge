@@ -20,5 +20,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src/frontend"]
+  "include": ["packages/bridge_frontend"]
 }

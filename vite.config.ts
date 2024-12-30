@@ -18,7 +18,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src/frontend'),
+      '@': path.resolve(__dirname, './packages/bridge_frontend'),
     },
   },
   optimizeDeps: {
@@ -39,8 +39,8 @@ export default defineConfig({
   plugins: [
     viteReact(),
     TanStackRouterVite({
-      routesDirectory: './src/frontend/routes',
-      generatedRouteTree: './src/frontend/routeTree.gen.ts',
+      routesDirectory: './packages/bridge_frontend/routes',
+      generatedRouteTree: './packages/bridge_frontend/routeTree.gen.ts',
     }),
     environment('all', { prefix: 'CANISTER_' }),
     environment('all', { prefix: 'DFX_' }),

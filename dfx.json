@@ -4,7 +4,7 @@
       "type": "custom",
       "candid": "https://github.com/kristoferlund/ic-siwe/releases/download/v0.1.1/ic_siwe_provider.did",
       "declarations": {
-        "output": "src/ic_siwe_provider/declarations"
+        "output": "packages/ic_siwe_provider/declarations"
       },
       "wasm": "https://github.com/kristoferlund/ic-siwe/releases/download/v0.1.1/ic_siwe_provider.wasm.gz"
     },
@@ -12,7 +12,7 @@
       "type": "custom",
       "candid": "https://github.com/dfinity/internet-identity/releases/download/release-2024-10-01/internet_identity.did",
       "declarations": {
-        "output": "src/internet_identity/declarations"
+        "output": "packages/internet_identity/declarations"
       },
       "remote": {
         "id": {
@@ -26,7 +26,7 @@
     "evm_rpc": {
       "candid": "https://github.com/internet-computer-protocol/evm-rpc-canister/releases/latest/download/evm_rpc.did",
       "declarations": {
-        "output": "src/evm_rpc/declarations"
+        "output": "packages/evm_rpc/declarations"
       },
       "init_arg": "(record { nodesInSubnet = 28 })",
       "remote": {
@@ -39,17 +39,17 @@
       "type": "custom",
       "wasm": "https://github.com/internet-computer-protocol/evm-rpc-canister/releases/latest/download/evm_rpc.wasm.gz"
     },
-    "backend": {
-      "candid": "src/backend/backend.did",
+    "bridge": {
+      "candid": "packages/bridge/bridge.did",
       "declarations": {
-        "output": "src/backend/declarations"
+        "output": "packages/bridge/declarations"
       },
-      "package": "backend",
+      "package": "bridge",
       "type": "rust"
     },
     "frontend": {
       "declarations": {
-        "output": "src/frontend/declarations"
+        "output": "packages/frontend/declarations"
       },
       "source": ["dist"],
       "type": "assets",
