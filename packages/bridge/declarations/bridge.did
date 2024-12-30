@@ -5,8 +5,8 @@ type EthPoolLiquidityPositionDto = record {
 type HttpError = record { code : nat16; message : text; details : opt text };
 type InitArgs = record { eth_min_confirmations : nat64 };
 type Result = variant { Ok : EthPoolLiquidityPositionDto; Err : HttpError };
-type Result_1 = variant { Ok : UserDto; Err : HttpError };
-type UserDto = record { "principal" : principal; eth_address : opt text };
+type Result_1 = variant { Ok : User; Err : HttpError };
+type User = record { eth_address : blob };
 service : (InitArgs) -> {
   eth_pool_create_position : (text) -> (Result) query;
   user_create : () -> (Result_1);
