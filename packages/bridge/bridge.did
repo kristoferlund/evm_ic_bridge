@@ -1,0 +1,14 @@
+type EthPoolLiquidityPositionDto = record {
+  last_claimed_fee_per_token : text;
+  amount : text;
+};
+type HttpError = record { code : nat16; message : text; details : opt text };
+type InitArgs = record { eth_min_confirmations : nat64 };
+type Result = variant { Ok : EthPoolLiquidityPositionDto; Err : HttpError };
+type Result_1 = variant { Ok : User; Err : HttpError };
+type User = record { eth_address : blob };
+service : (InitArgs) -> {
+  eth_pool_create_position : (text) -> (Result) query;
+  user_create : () -> (Result_1);
+  user_register_eth_address : () -> (Result_1);
+}

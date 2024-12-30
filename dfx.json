@@ -44,8 +44,9 @@
       "declarations": {
         "output": "packages/bridge/declarations"
       },
-      "package": "bridge",
-      "type": "rust"
+      "init_arg": "(record { eth_min_confirmations = 12 })",
+      "type": "custom",
+      "wasm": "./target/wasm32-unknown-unknown/release/bridge.wasm.gz"
     },
     "frontend": {
       "declarations": {
