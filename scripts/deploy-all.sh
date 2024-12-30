@@ -25,12 +25,6 @@ dfx deploy internet_identity
 
 dfx deploy evm_rpc
 
-cargo build -p bridge --release --target wasm32-unknown-unknown
-cd ./target/wasm32-unknown-unknown/release
-candid-extractor bridge.wasm >../../../packages/bridge/bridge.did
-ic-wasm bridge.wasm -o bridge.wasm metadata candid:service -f ../../../packages/bridge/bridge.did -v public
-gzip -c bridge.wasm >bridge.wasm.gz
-
 dfx deploy bridge --with-cycles 10t
 
 dfx deploy frontend
