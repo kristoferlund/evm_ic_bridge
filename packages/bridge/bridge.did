@@ -3,7 +3,12 @@ type EthPoolLiquidityPositionDto = record {
   amount : text;
 };
 type HttpError = record { code : nat16; message : text; details : opt text };
-type InitArgs = record { eth_min_confirmations : nat64 };
+type InitArgs = record {
+  ecdsa_key_id : text;
+  siwe_provider_canister : text;
+  eth_min_confirmations : nat64;
+  evm_rpc_canister : text;
+};
 type Result = variant { Ok : EthPoolLiquidityPositionDto; Err : HttpError };
 type Result_1 = variant { Ok : UserDto; Err : HttpError };
 type UserDto = record { "principal" : principal; eth_address : opt text };
