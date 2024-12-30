@@ -3,11 +3,11 @@ use ic_cdk::update;
 use crate::{
     http_error::HttpError,
     siwe,
-    user::{user_types::EMPTY_ETH_ADDRESS, user_utils::auth_guard_no_anon, User, UserManager},
+    user::{user_utils::auth_guard_no_anon, UserDto, UserManager},
 };
 
 #[update]
-async fn user_register_eth_address() -> Result<User, HttpError> {
+async fn user_register_eth_address() -> Result<UserDto, HttpError> {
     auth_guard_no_anon()?;
 
     let caller = ic_cdk::caller();
@@ -15,7 +15,7 @@ async fn user_register_eth_address() -> Result<User, HttpError> {
     // Make sure user exists and doesn't already have an Ethereum address
     match UserManager::get_by_principal(caller) {
         Ok(user) => {
-            if user.eth_address != EMPTY_ETH_ADDRESS {
+            if user.eth_address.is_some() {
                 return Err(HttpError::conflict("Ethereum address already registered."));
             }
             Ok(())
@@ -36,5 +36,8 @@ async fn user_register_eth_address() -> Result<User, HttpError> {
     let user = UserManager::set_eth_address(caller, address.into_array())
         .map_err(|e| HttpError::internal_server_error(e.to_string()))?;
 
-    Ok(user)
+    Ok(UserDto {
+        principal: user.principal,
+        eth_address: Some(address.to_checksum(None)),
+    })
 }

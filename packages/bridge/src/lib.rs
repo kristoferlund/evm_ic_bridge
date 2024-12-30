@@ -8,7 +8,7 @@ use ic_stable_structures::{
 use init::InitArgs;
 use state::state_types::State;
 use std::cell::RefCell;
-use user::User;
+use user::user_types::UserDto;
 
 pub mod declarations;
 pub mod eth_pool;

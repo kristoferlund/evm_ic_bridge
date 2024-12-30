@@ -2,7 +2,7 @@ use super::{eth_pool_types::EthPoolLiquidityPosition, EthPoolError, EthPoolState
 use crate::{
     event::{Event, EventPublisher},
     evm::utils::get_rpc_service,
-    user::UserManager,
+    user::{UserError, UserManager},
     STATE,
 };
 use alloy::{
@@ -21,7 +21,8 @@ impl EthPoolManager {
         hash: FixedBytes<32>,
     ) -> Result<EthPoolLiquidityPosition, EthPoolError> {
         let user = UserManager::get_by_principal(user_principal)?;
-        let user_address = Address::from_slice(&user.eth_address);
+        let user_eth_address = user.eth_address.ok_or(UserError::NoEthAddress)?;
+        let user_eth_address = Address::from_slice(user_eth_address.as_slice());
 
         let rpc_service = get_rpc_service();
         let config = IcpConfig::new(rpc_service);
@@ -37,7 +38,7 @@ impl EthPoolManager {
             .ok_or_else(|| anyhow!("Transaction not mined"))?;
 
         // Verify that the transaction was sent by the caller
-        if tx.from != user_address {
+        if tx.from != user_eth_address {
             return Err(anyhow!("Transaction not sent by caller").into());
         }
 

@@ -5,4 +5,4 @@ pub mod user_types;
 pub mod user_utils;
 
 pub use user_manager::UserManager;
-pub use user_types::{User, UserError};
+pub use user_types::{User, UserDto, UserError};
