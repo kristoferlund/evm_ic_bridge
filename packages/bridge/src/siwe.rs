@@ -1,8 +1,13 @@
+use std::str::FromStr;
+
 use candid::Principal;
 use serde_bytes::ByteBuf;
 use thiserror::Error;
 
-use crate::declarations::ic_siwe_provider::{ic_siwe_provider, GetAddressResponse};
+use crate::{
+    declarations::ic_siwe_provider::{GetAddressResponse, IcSiweProvider},
+    STATE,
+};
 use alloy::primitives::Address;
 
 #[derive(Error, Debug)]
@@ -20,7 +25,11 @@ pub enum GetAuthenticatedEthAddressError {
 pub async fn get_eth_address(
     principal: Principal,
 ) -> Result<Option<Address>, GetAuthenticatedEthAddressError> {
-    let response = ic_siwe_provider
+    let siwe_provider_canister = STATE.with_borrow(|state| state.siwe_provider_canister.clone());
+    let siwe_provider_canister = Principal::from_str(&siwe_provider_canister)
+        .map_err(|_| GetAuthenticatedEthAddressError::InvalidSiweProviderCanisterId)?;
+
+    let response = IcSiweProvider(siwe_provider_canister)
         .get_address(ByteBuf::from(principal.as_slice()))
         .await
         .map_err(|e| {
