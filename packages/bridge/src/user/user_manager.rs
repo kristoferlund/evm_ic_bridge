@@ -14,28 +14,26 @@ impl UserManager {
         if principal == Principal::anonymous() {
             return Err(UserError::InvalidPrincipal);
         }
-        STATE.with_borrow(|state| {
-            if state.users.contains_key(&principal) {
-                return Err(UserError::AlreadyExists);
-            }
-            let user = UserStateTransitions::create(principal);
-            EventPublisher::publish(Event::CreateUser(principal)).unwrap();
-            Ok(user)
-        })
+        let user_exists = STATE.with_borrow(|state| state.users.contains_key(&principal));
+        if user_exists {
+            return Err(UserError::AlreadyExists);
+        }
+        let user = UserStateTransitions::create(principal);
+        EventPublisher::publish(Event::CreateUser(principal)).unwrap();
+        Ok(user)
     }
 
     pub fn set_eth_address(
         principal: Principal,
         eth_address: EthAddressBytes,
     ) -> Result<User, UserError> {
-        STATE.with_borrow(|state| {
-            if !state.users.contains_key(&principal) {
-                return Err(UserError::NotFound);
-            }
-            let user = UserStateTransitions::set_eth_address(principal, eth_address);
-            EventPublisher::publish(Event::RegisterEthAddress(principal, eth_address)).unwrap();
-            Ok(user)
-        })
+        let user_exists = STATE.with_borrow(|state| state.users.contains_key(&principal));
+        if !user_exists {
+            return Err(UserError::NotFound);
+        }
+        let user = UserStateTransitions::set_eth_address(principal, eth_address);
+        EventPublisher::publish(Event::RegisterEthAddress(principal, eth_address)).unwrap();
+        Ok(user)
     }
 
     pub fn get_by_principal(principal: Principal) -> Result<User, UserError> {
