@@ -1,4 +1,4 @@
-use candid::{encode_args, encode_one, Principal};
+use candid::{encode_args, encode_one, CandidType, Principal};
 use ethers::{
     core::k256::ecdsa::SigningKey,
     signers::{LocalWallet, Signer, Wallet},
@@ -14,10 +14,11 @@ use ic_agent::{
 use ic_siwe::{delegation::SignedDelegation, login::LoginDetails};
 use pocket_ic::PocketIc;
 use rand::Rng;
+use serde::Deserialize;
 
 use crate::{
     common::{query, update},
-    types::SiweUser,
+    types::UserDto,
 };
 
 pub fn create_wallet() -> (ethers::signers::LocalWallet, String) {
@@ -27,14 +28,20 @@ pub fn create_wallet() -> (ethers::signers::LocalWallet, String) {
     (wallet, address)
 }
 
+#[derive(CandidType, Deserialize)]
+struct PrepareLoginOkResponse {
+    siwe_message: String,
+    nonce: String,
+}
+
 pub fn prepare_login_and_sign_message(
     ic: &PocketIc,
     ic_siwe_provider_canister: Principal,
     wallet: Wallet<SigningKey>,
     address: &str,
-) -> (String, String) {
+) -> (String, String, String) {
     let args = encode_one(address).unwrap();
-    let siwe_message: String = update(
+    let response: PrepareLoginOkResponse = update(
         ic,
         ic_siwe_provider_canister,
         Principal::anonymous(),
@@ -42,12 +49,16 @@ pub fn prepare_login_and_sign_message(
         args,
     )
     .unwrap();
-    let hash = hash_message(siwe_message.as_bytes());
+    let hash = hash_message(response.siwe_message.as_bytes());
     let signature = wallet.sign_hash(hash).unwrap().to_string();
-    (format!("0x{}", signature.as_str()), siwe_message)
+    (
+        format!("0x{}", signature.as_str()),
+        response.siwe_message,
+        response.nonce,
+    )
 }
 
-pub fn create_session_identity() -> BasicIdentity {
+pub fn create_basic_identity() -> BasicIdentity {
     let mut ed25519_seed = [0u8; 32];
     rand::thread_rng().fill(&mut ed25519_seed);
     let ed25519_keypair =
@@ -80,20 +91,25 @@ pub fn create_delegated_identity(
 pub fn full_login(
     ic: &PocketIc,
     ic_siwe_provider_canister: Principal,
-    catts_canister: Principal,
+    bridge_canister: Principal,
     targets: Option<Vec<Principal>>,
 ) -> (String, DelegatedIdentity) {
     let (wallet, address) = create_wallet();
-    let (signature, _) =
+    let (signature, _, nonce) =
         prepare_login_and_sign_message(ic, ic_siwe_provider_canister, wallet, &address);
 
     // Create a session identity
-    let session_identity = create_session_identity();
-
+    let session_identity = create_basic_identity();
     let session_pubkey = session_identity.public_key().unwrap();
 
     // Login
-    let login_args = encode_args((signature, address.clone(), session_pubkey.clone())).unwrap();
+    let login_args = encode_args((
+        signature,
+        address.clone(),
+        session_pubkey.clone(),
+        nonce.clone(),
+    ))
+    .unwrap();
     let login_response: LoginDetails = update(
         ic,
         ic_siwe_provider_canister,
@@ -128,10 +144,10 @@ pub fn full_login(
         targets,
     );
 
-    // Create a user in the catts canister
-    let _: SiweUser = update(
+    // Create a user in the bridge canister
+    let _: UserDto = update(
         ic,
-        catts_canister,
+        bridge_canister,
         delegated_identity.sender().unwrap(),
         "user_create",
         encode_one(()).unwrap(),
