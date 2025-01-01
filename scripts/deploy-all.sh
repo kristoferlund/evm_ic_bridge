@@ -25,7 +25,14 @@ dfx deploy internet_identity
 
 dfx deploy evm_rpc
 
-dfx deploy bridge --with-cycles 10t
+dfx deploy bridge --with-cycles 10t --argument $'(
+    record {
+      ecdsa_key_id = "dfx_test_key"; 
+      siwe_provider_canister =  "'$(dfx canister id ic_siwe_provider)'";
+      evm_rpc_url = "https://ic-alloy-evm-rpc-proxy.kristofer-977.workers.dev/eth-sepolia";
+      eth_min_confirmations = 12;
+  }
+)'
 
 dfx deploy frontend
 
