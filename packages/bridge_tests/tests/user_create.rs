@@ -107,7 +107,7 @@ fn test_user_register_eth_address_not_logged_in() {
 #[test]
 fn test_user_register_eth_address_siwe_logged_in() {
     let (ic, siwe, bridge) = setup();
-    let (_, identity) = full_login(&ic, siwe, bridge, None);
+    let (_, _, identity) = full_login(&ic, siwe, bridge, None);
     let response: RpcResult<UserDto> = bridge_update(
         &ic,
         bridge,
@@ -122,7 +122,7 @@ fn test_user_register_eth_address_siwe_logged_in() {
 #[test]
 fn test_user_register_eth_address_twice_for_same_user() {
     let (ic, siwe, bridge) = setup();
-    let (_, identity) = full_login(&ic, siwe, bridge, None);
+    let (_, _, identity) = full_login(&ic, siwe, bridge, None);
 
     // First attempt to register an Ethereum address
     let first_response: RpcResult<UserDto> = bridge_update(

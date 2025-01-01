@@ -49,6 +49,31 @@ pub struct SiweUser {
     pub eth_address: String,
 }
 
+#[derive(CandidType, Deserialize, Debug)]
+pub enum Event {
+    Init(InitArgs),
+    PostUpgrade(InitArgs),
+    CreateUser(Principal),
+    RegisterEthAddress(Principal, EthAddressBytes),
+    EThPoolCreatePosition(Principal, String),
+}
+
+#[derive(CandidType, Deserialize, Debug)]
+pub struct InitArgs {
+    pub ecdsa_key_id: String,
+    pub siwe_provider_canister: String,
+    pub evm_rpc_url: String,
+    pub eth_min_confirmations: u64,
+}
+
+pub type EthAddressBytes = [u8; 20];
+
+#[derive(CandidType, Deserialize, Debug)]
+pub struct EthPoolLiquidityPositionDto {
+    pub amount: String,
+    pub last_claimed_fee_per_token: String,
+}
+
 //
 // pub type EthAddressBytes = [u8; 20];
 // pub type Uid = String;

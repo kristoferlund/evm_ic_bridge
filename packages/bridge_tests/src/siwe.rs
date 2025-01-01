@@ -37,7 +37,7 @@ struct PrepareLoginOkResponse {
 pub fn prepare_login_and_sign_message(
     ic: &PocketIc,
     ic_siwe_provider_canister: Principal,
-    wallet: Wallet<SigningKey>,
+    wallet: &Wallet<SigningKey>,
     address: &str,
 ) -> (String, String, String) {
     let args = encode_one(address).unwrap();
@@ -93,10 +93,10 @@ pub fn full_login(
     ic_siwe_provider_canister: Principal,
     bridge_canister: Principal,
     targets: Option<Vec<Principal>>,
-) -> (String, DelegatedIdentity) {
+) -> (Wallet<SigningKey>, String, DelegatedIdentity) {
     let (wallet, address) = create_wallet();
     let (signature, _, nonce) =
-        prepare_login_and_sign_message(ic, ic_siwe_provider_canister, wallet, &address);
+        prepare_login_and_sign_message(ic, ic_siwe_provider_canister, &wallet, &address);
 
     // Create a session identity
     let session_identity = create_basic_identity();
@@ -154,5 +154,26 @@ pub fn full_login(
     )
     .unwrap();
 
-    (address, delegated_identity)
+    (wallet, address, delegated_identity)
+}
+
+pub fn full_login_with_eth_registered(
+    ic: &PocketIc,
+    ic_siwe_provider_canister: Principal,
+    bridge_canister: Principal,
+    targets: Option<Vec<Principal>>,
+) -> (Wallet<SigningKey>, String, DelegatedIdentity) {
+    let (wallet, address, delegated_identity) =
+        full_login(ic, ic_siwe_provider_canister, bridge_canister, targets);
+
+    let _: UserDto = update(
+        ic,
+        bridge_canister,
+        delegated_identity.sender().unwrap(),
+        "user_register_eth_address",
+        encode_one(()).unwrap(),
+    )
+    .unwrap();
+
+    (wallet, address, delegated_identity)
 }

@@ -1,12 +1,13 @@
 use candid::{decode_one, encode_one, CandidType, Principal};
 use pocket_ic::{PocketIc, PocketIcBuilder, WasmResult};
 use serde::{Deserialize, Serialize};
-use std::{fs, time::Duration};
+use std::{fs, str::FromStr, time::Duration};
 
 use crate::types::{RpcError, RpcResult};
 
 pub const BRIDGE_ENGINE_WASM: &str = "../../target/wasm32-unknown-unknown/release/bridge.wasm.gz";
 pub const IC_SIWE_WASM: &str = "../ic_siwe_provider/ic_siwe_provider.wasm.gz";
+pub const EVM_RPC_WASM: &str = "../evm_rpc/evm_rpc.wasm.gz";
 
 #[derive(CandidType, Debug, Clone, PartialEq, Deserialize)]
 pub enum RuntimeFeature {
@@ -33,8 +34,20 @@ pub struct SettingsInput {
 struct BridgeSettings {
     ecdsa_key_id: String,
     siwe_provider_canister: String,
-    evm_rpc_canister: String,
+    evm_rpc_url: String,
     eth_min_confirmations: u64,
+}
+
+#[derive(Serialize, Deserialize, CandidType)]
+struct EvmRpcSettings {
+    #[serde(rename = "nodesInSubnet")]
+    nodes_in_subnet: u32,
+}
+
+pub fn tick(ic: &PocketIc, times: u32) {
+    for _ in 0..times {
+        ic.tick();
+    }
 }
 
 pub fn setup() -> (PocketIc, Principal, Principal) {
@@ -70,11 +83,25 @@ pub fn setup() -> (PocketIc, Principal, Principal) {
     let bridge_settings = BridgeSettings {
         ecdsa_key_id: "dfx_test_key".to_string(),
         siwe_provider_canister: ic_siwe_canister.to_string(),
-        evm_rpc_canister: "not used yet".to_string(),
+        evm_rpc_url: "http://127.0.0.1:8545".to_string(),
         eth_min_confirmations: 12,
     };
     let args = encode_one(bridge_settings).unwrap();
     ic.install_canister(bridge_canister, bridge_wasm, args, None);
+
+    // Install EVM RPC canister
+    let evm_rpc_canister = ic
+        .create_canister_with_id(
+            None,
+            None,
+            Principal::from_str("7hfb6-caaaa-aaaar-qadga-cai").unwrap(),
+        )
+        .unwrap();
+    ic.add_cycles(evm_rpc_canister, 2_000_000_000_000); // 2T Cycles
+    let evm_rpc_wasm = fs::read(EVM_RPC_WASM).expect("EVM_RPC_WASM not found");
+    let evm_rpc_settings = EvmRpcSettings { nodes_in_subnet: 1 };
+    let args = encode_one(evm_rpc_settings).unwrap();
+    ic.install_canister(evm_rpc_canister, evm_rpc_wasm, args, None);
 
     // Fast forward in time to allow the ic_siwe_provider_canister to be fully installed.
     for _ in 0..5 {
