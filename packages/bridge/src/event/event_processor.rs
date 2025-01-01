@@ -1,3 +1,5 @@
+use alloy::primitives::U256;
+
 use super::Event;
 use crate::{
     eth_pool::EthPoolStateTransitions, init::init_state_transitions::InitStateTransitions,
@@ -21,8 +23,12 @@ impl EventProcessor {
             Event::RegisterEthAddress(principal, eth_address) => {
                 UserStateTransitions::set_eth_address(principal, eth_address);
             }
+
             Event::EThPoolCreatePosition(principal, value) => {
-                EthPoolStateTransitions::create_position(principal, value);
+                EthPoolStateTransitions::create_position(
+                    principal,
+                    U256::from_str_radix(&value, 16).unwrap(), //TODO erro handling
+                );
             }
         }
     }

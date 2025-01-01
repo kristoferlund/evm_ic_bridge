@@ -63,7 +63,11 @@ impl EthPoolManager {
 
         // Adding liquidity
         let position = EthPoolStateTransitions::create_position(user_principal, tx.value);
-        EventPublisher::publish(Event::EThPoolCreatePosition(user_principal, tx.value)).unwrap();
+        EventPublisher::publish(Event::EThPoolCreatePosition(
+            user_principal,
+            tx.value.to_string(),
+        ))
+        .unwrap();
 
         Ok(position)
     }
