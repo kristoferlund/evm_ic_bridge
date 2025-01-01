@@ -14,7 +14,7 @@ pub enum EthPoolError {
     TransportError(#[from] alloy::transports::TransportError),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EthPoolLiquidityPosition {
     pub amount: U256,
     pub last_claimed_fee_per_token: U256,

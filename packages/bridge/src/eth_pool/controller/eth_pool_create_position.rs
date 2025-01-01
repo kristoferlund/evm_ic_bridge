@@ -5,9 +5,9 @@ use crate::{
     utils::alloy::fixed_bytes_from_hex_str,
 };
 use crate::{http_error::HttpError, user::user_utils::auth_guard_eth};
-use ic_cdk::query;
+use ic_cdk::update;
 
-#[query]
+#[update]
 pub async fn eth_pool_create_position(
     hash: String,
 ) -> Result<EthPoolLiquidityPositionDto, HttpError> {
