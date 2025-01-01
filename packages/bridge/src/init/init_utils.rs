@@ -8,7 +8,7 @@ pub fn validate_init_args(args: &InitArgs) {
     if args.siwe_provider_canister.is_empty() {
         trap("The field siwe_provider_canister is required");
     }
-    if args.evm_rpc_canister.is_empty() {
-        trap("The field evm_rpc_canister is required");
+    if args.evm_rpc_url.is_empty() {
+        trap("The field evm_rpc_url is required");
     }
 }

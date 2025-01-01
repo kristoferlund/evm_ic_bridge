@@ -6,8 +6,9 @@ use alloy::{
 use crate::STATE;
 
 pub fn get_rpc_service() -> RpcService {
+    let evm_rpc_url = STATE.with_borrow(|state| state.evm_rpc_url.clone());
     RpcService::Custom(RpcApi {
-        url: "https://ic-alloy-evm-rpc-proxy.kristofer-977.workers.dev/eth-sepolia".to_string(),
+        url: evm_rpc_url,
         headers: None,
     })
 }

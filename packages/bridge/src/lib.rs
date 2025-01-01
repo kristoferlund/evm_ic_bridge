@@ -1,4 +1,5 @@
 use eth_pool::EthPoolLiquidityPositionDto;
+use event::event_types::Event;
 use http_error::HttpError;
 use ic_cdk::export_candid;
 use ic_stable_structures::{

@@ -27,7 +27,8 @@ impl EventProcessor {
             Event::EThPoolCreatePosition(principal, value) => {
                 EthPoolStateTransitions::create_position(
                     principal,
-                    U256::from_str_radix(&value, 16).unwrap(), //TODO erro handling
+                    U256::from_str_radix(&value, 16).unwrap(), //TODO: error handling + make sure
+                                                               // radix is correct
                 );
             }
         }

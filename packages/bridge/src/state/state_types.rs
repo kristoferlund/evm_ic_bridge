@@ -11,7 +11,7 @@ pub struct State {
     // Settings
     pub ecdsa_key_id: String,
     pub siwe_provider_canister: String,
-    pub evm_rpc_canister: String,
+    pub evm_rpc_url: String,
     pub eth_min_confirmations: u64,
 
     // Runtime
