@@ -23,6 +23,7 @@ ic_siwe = "0.1.1"
 siwe = "0.6"
 rand = "0.8.4"
 ring = "0.17.7"
+slog = "2.7.0"
 
 
 [dev-dependencies]

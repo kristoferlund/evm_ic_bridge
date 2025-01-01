@@ -40,7 +40,8 @@ struct BridgeSettings {
 pub fn setup() -> (PocketIc, Principal, Principal) {
     let ic = PocketIcBuilder::new()
         .with_ii_subnet() // to have tECDSA keys available
-        .with_application_subnet() // to deploy the test dapp
+        .with_application_subnet()
+        .with_log_level(slog::Level::Error)
         .build();
 
     // Install ic-siwe
