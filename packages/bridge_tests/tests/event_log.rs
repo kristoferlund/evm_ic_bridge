@@ -9,7 +9,7 @@ use ic_agent::Identity;
 // Basic first testing if the event_log function is working, jyst checking that
 // the response is ok and that the correct number of events are returned.
 #[test]
-fn test_event_log() {
+fn event_log() {
     let (ic, siwe, bridge) = setup();
     let (_, _, identity) = full_login(&ic, siwe, bridge, None);
     let _: RpcResult<UserDto> = bridge_update(
