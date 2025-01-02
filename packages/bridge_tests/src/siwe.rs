@@ -1,7 +1,9 @@
+use std::str::FromStr;
+
 use candid::{encode_args, encode_one, CandidType, Principal};
 use ethers::{
     core::k256::ecdsa::SigningKey,
-    signers::{LocalWallet, Signer, Wallet},
+    signers::{Signer, Wallet},
     utils::{hash_message, to_checksum},
 };
 use ic_agent::{
@@ -20,9 +22,10 @@ use crate::{
     common::{query, update},
     types::UserDto,
 };
+const PK1: &str = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 
 pub fn create_wallet() -> (ethers::signers::LocalWallet, String) {
-    let wallet = LocalWallet::new(&mut rand::thread_rng());
+    let wallet = Wallet::from_str(PK1).unwrap();
     let h160 = wallet.address();
     let address = to_checksum(&h160, None);
     (wallet, address)

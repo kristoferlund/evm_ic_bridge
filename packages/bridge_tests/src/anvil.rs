@@ -9,6 +9,8 @@ use pocket_ic::{
 use serde::de::DeserializeOwned;
 use ureq::{Agent, Response};
 
+const ANVIL_URL: &str = "http://127.0.0.1:8545";
+
 pub fn get_response_headers(response: &Response) -> Vec<CanisterHttpHeader> {
     let mut headers = vec![];
     response.headers_names().into_iter().for_each(|name| {
@@ -18,6 +20,7 @@ pub fn get_response_headers(response: &Response) -> Vec<CanisterHttpHeader> {
     headers
 }
 
+// Forward an IC https outcall to local Anvil server
 pub fn anvil_request(canister_req: &CanisterHttpRequest) -> MockCanisterHttpResponse {
     let agent = Agent::new();
     let method = match canister_req.http_method {
@@ -25,7 +28,7 @@ pub fn anvil_request(canister_req: &CanisterHttpRequest) -> MockCanisterHttpResp
         CanisterHttpMethod::POST => "POST",
         CanisterHttpMethod::HEAD => "HEAD",
     };
-    let mut request = agent.request(method, "http://127.0.0.1:8545");
+    let mut request = agent.request(method, ANVIL_URL);
 
     for header in &canister_req.headers {
         request = request.set(&header.name, &header.value);
