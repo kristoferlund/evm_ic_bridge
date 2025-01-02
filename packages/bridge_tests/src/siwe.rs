@@ -1,11 +1,13 @@
-use std::str::FromStr;
-
-use candid::{encode_args, encode_one, CandidType, Principal};
-use ethers::{
-    core::k256::ecdsa::SigningKey,
-    signers::{Signer, Wallet},
-    utils::{hash_message, to_checksum},
+use crate::{
+    common::{query, update},
+    types::UserDto,
 };
+use alloy::{
+    node_bindings::{Anvil, AnvilInstance},
+    primitives::Signature,
+    signers::{local::PrivateKeySigner, Signer},
+};
+use candid::{encode_args, encode_one, CandidType, Principal};
 use ic_agent::{
     identity::{
         BasicIdentity, DelegatedIdentity, Delegation as AgentDelegation,
@@ -14,21 +16,13 @@ use ic_agent::{
     Identity,
 };
 use ic_siwe::{delegation::SignedDelegation, login::LoginDetails};
-use pocket_ic::PocketIc;
+use pocket_ic::nonblocking::PocketIc;
 use rand::Rng;
 use serde::Deserialize;
 
-use crate::{
-    common::{query, update},
-    types::UserDto,
-};
-const PK1: &str = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
-
-pub fn create_wallet() -> (ethers::signers::LocalWallet, String) {
-    let wallet = Wallet::from_str(PK1).unwrap();
-    let h160 = wallet.address();
-    let address = to_checksum(&h160, None);
-    (wallet, address)
+pub fn create_signer(anvil: &AnvilInstance) -> PrivateKeySigner {
+    let signer: PrivateKeySigner = anvil.keys()[0].clone().into();
+    signer
 }
 
 #[derive(CandidType, Deserialize)]
@@ -37,13 +31,16 @@ struct PrepareLoginOkResponse {
     nonce: String,
 }
 
-pub fn prepare_login_and_sign_message(
+pub fn signature_to_hex_str(signature: &Signature) -> String {
+    format!("0x{}", hex::encode(signature.as_bytes()))
+}
+
+pub async fn prepare_login_and_sign_message(
     ic: &PocketIc,
     ic_siwe_provider_canister: Principal,
-    wallet: &Wallet<SigningKey>,
-    address: &str,
+    signer: &PrivateKeySigner,
 ) -> (String, String, String) {
-    let args = encode_one(address).unwrap();
+    let args = encode_one(signer.address().to_checksum(None)).unwrap();
     let response: PrepareLoginOkResponse = update(
         ic,
         ic_siwe_provider_canister,
@@ -51,11 +48,16 @@ pub fn prepare_login_and_sign_message(
         "siwe_prepare_login",
         args,
     )
+    .await
     .unwrap();
-    let hash = hash_message(response.siwe_message.as_bytes());
-    let signature = wallet.sign_hash(hash).unwrap().to_string();
+
+    let signature = signer
+        .sign_message(response.siwe_message.as_bytes())
+        .await
+        .unwrap();
+
     (
-        format!("0x{}", signature.as_str()),
+        signature_to_hex_str(&signature),
         response.siwe_message,
         response.nonce,
     )
@@ -91,15 +93,21 @@ pub fn create_delegated_identity(
     )
 }
 
-pub fn full_login(
+pub async fn full_login(
     ic: &PocketIc,
     ic_siwe_provider_canister: Principal,
     bridge_canister: Principal,
     targets: Option<Vec<Principal>>,
-) -> (Wallet<SigningKey>, String, DelegatedIdentity) {
-    let (wallet, address) = create_wallet();
+) -> (AnvilInstance, PrivateKeySigner, String, DelegatedIdentity) {
+    let anvil = Anvil::new()
+        .block_time(1)
+        .try_spawn()
+        .expect("Failed to spawn Anvil instance. Ensure `anvil` is available in $PATH.");
+
+    let signer = create_signer(&anvil);
+    let address = signer.address().to_checksum(None);
     let (signature, _, nonce) =
-        prepare_login_and_sign_message(ic, ic_siwe_provider_canister, &wallet, &address);
+        prepare_login_and_sign_message(ic, ic_siwe_provider_canister, &signer).await;
 
     // Create a session identity
     let session_identity = create_basic_identity();
@@ -120,6 +128,7 @@ pub fn full_login(
         "siwe_login",
         login_args,
     )
+    .await
     .unwrap();
 
     // Get the delegation
@@ -137,6 +146,7 @@ pub fn full_login(
         "siwe_get_delegation",
         get_delegation_args,
     )
+    .await
     .unwrap();
 
     // Create a delegated identity
@@ -155,19 +165,20 @@ pub fn full_login(
         "user_create",
         encode_one(()).unwrap(),
     )
+    .await
     .unwrap();
 
-    (wallet, address, delegated_identity)
+    (anvil, signer, address, delegated_identity)
 }
 
-pub fn full_login_with_eth_registered(
+pub async fn full_login_with_eth_registered(
     ic: &PocketIc,
     ic_siwe_provider_canister: Principal,
     bridge_canister: Principal,
     targets: Option<Vec<Principal>>,
-) -> (Wallet<SigningKey>, String, DelegatedIdentity) {
-    let (wallet, address, delegated_identity) =
-        full_login(ic, ic_siwe_provider_canister, bridge_canister, targets);
+) -> (AnvilInstance, PrivateKeySigner, String, DelegatedIdentity) {
+    let (anvil, signer, address, delegated_identity) =
+        full_login(ic, ic_siwe_provider_canister, bridge_canister, targets).await;
 
     let _: UserDto = update(
         ic,
@@ -176,7 +187,8 @@ pub fn full_login_with_eth_registered(
         "user_register_eth_address",
         encode_one(()).unwrap(),
     )
+    .await
     .unwrap();
 
-    (wallet, address, delegated_identity)
+    (anvil, signer, address, delegated_identity)
 }

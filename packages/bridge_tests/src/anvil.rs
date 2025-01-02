@@ -1,15 +1,15 @@
+use alloy::node_bindings::AnvilInstance;
 use candid::{decode_one, CandidType};
 use pocket_ic::{
     common::rest::{
         CanisterHttpHeader, CanisterHttpMethod, CanisterHttpReply, CanisterHttpRequest,
         CanisterHttpResponse, MockCanisterHttpResponse, RawMessageId,
     },
-    PocketIc, WasmResult,
+    nonblocking::PocketIc,
+    WasmResult,
 };
 use serde::de::DeserializeOwned;
 use ureq::{Agent, Response};
-
-const ANVIL_URL: &str = "http://127.0.0.1:8545";
 
 pub fn get_response_headers(response: &Response) -> Vec<CanisterHttpHeader> {
     let mut headers = vec![];
@@ -21,14 +21,17 @@ pub fn get_response_headers(response: &Response) -> Vec<CanisterHttpHeader> {
 }
 
 // Forward an IC https outcall to local Anvil server
-pub fn anvil_request(canister_req: &CanisterHttpRequest) -> MockCanisterHttpResponse {
+pub fn anvil_request(
+    canister_req: &CanisterHttpRequest,
+    anvil: AnvilInstance,
+) -> MockCanisterHttpResponse {
     let agent = Agent::new();
     let method = match canister_req.http_method {
         CanisterHttpMethod::GET => "GET",
         CanisterHttpMethod::POST => "POST",
         CanisterHttpMethod::HEAD => "HEAD",
     };
-    let mut request = agent.request(method, ANVIL_URL);
+    let mut request = agent.request(method, anvil.endpoint_url().as_str());
 
     for header in &canister_req.headers {
         request = request.set(&header.name, &header.value);
@@ -55,7 +58,7 @@ pub fn anvil_request(canister_req: &CanisterHttpRequest) -> MockCanisterHttpResp
     }
 }
 
-pub fn await_call_and_decode<T>(
+pub async fn await_call_and_decode<T>(
     ic: &PocketIc,
     response: MockCanisterHttpResponse,
     call_id: RawMessageId,
@@ -63,8 +66,8 @@ pub fn await_call_and_decode<T>(
 where
     T: CandidType + DeserializeOwned,
 {
-    ic.mock_canister_http_response(response);
-    let wasm_result = ic.await_call(call_id).unwrap();
+    ic.mock_canister_http_response(response).await;
+    let wasm_result = ic.await_call(call_id).await.unwrap();
     match wasm_result {
         WasmResult::Reply(data) => decode_one(&data).unwrap(),
         WasmResult::Reject(msg) => panic!("Unexpected reject {}", msg),

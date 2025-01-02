@@ -16,7 +16,6 @@ ic-cdk = "0.17.0"
 candid = "0.10.0"
 serde = "1.0.216"
 pocket-ic = "6.0.0"
-ethers = "2.0.14"
 hex = "0.4.3"
 ic-agent = "0.36.0"
 ic_siwe = "0.1.1"
@@ -26,7 +25,8 @@ ring = "0.17.7"
 slog = "2.7.0"
 ureq = "2.12.1"
 serde_json = "1.0.134"
-
+alloy = { version = "0.5.4", features = ["full", "provider-anvil-node"] }
+tokio = "1.42.0"
 
 [dev-dependencies]
 pocket-ic = "6.0.0"

@@ -1,5 +1,5 @@
 use candid::{decode_one, encode_one, CandidType, Principal};
-use pocket_ic::{PocketIc, PocketIcBuilder, WasmResult};
+use pocket_ic::{nonblocking::PocketIc, PocketIcBuilder, WasmResult};
 use serde::{Deserialize, Serialize};
 use std::{fs, str::FromStr, time::Duration};
 
@@ -44,22 +44,23 @@ struct EvmRpcSettings {
     nodes_in_subnet: u32,
 }
 
-pub fn tick(ic: &PocketIc, times: u32) {
+pub async fn tick(ic: &PocketIc, times: u32) {
     for _ in 0..times {
-        ic.tick();
+        ic.tick().await;
     }
 }
 
-pub fn setup() -> (PocketIc, Principal, Principal) {
+pub async fn setup() -> (PocketIc, Principal, Principal) {
     let ic = PocketIcBuilder::new()
         .with_ii_subnet() // to have tECDSA keys available
         .with_application_subnet()
         .with_log_level(slog::Level::Error)
-        .build();
+        .build_async()
+        .await;
 
     // Install ic-siwe
-    let ic_siwe_canister = ic.create_canister();
-    ic.add_cycles(ic_siwe_canister, 2_000_000_000_000); // 2T Cycles
+    let ic_siwe_canister = ic.create_canister().await;
+    ic.add_cycles(ic_siwe_canister, 2_000_000_000_000).await; // 2T Cycles
     let ic_siwe_wasm = fs::read(IC_SIWE_WASM).expect("IC_SIWE_WASM not found");
     let ic_siwe_settings = SettingsInput {
         domain: "127.0.0.1".to_string(),
@@ -74,11 +75,12 @@ pub fn setup() -> (PocketIc, Principal, Principal) {
         runtime_features: Some(vec![RuntimeFeature::IncludeUriInSeed]),
     };
     let args = encode_one(ic_siwe_settings).unwrap();
-    ic.install_canister(ic_siwe_canister, ic_siwe_wasm, args, None);
+    ic.install_canister(ic_siwe_canister, ic_siwe_wasm, args, None)
+        .await;
 
     // Install bridge
-    let bridge_canister = ic.create_canister();
-    ic.add_cycles(bridge_canister, 2_000_000_000_000); // 2T Cycles
+    let bridge_canister = ic.create_canister().await;
+    ic.add_cycles(bridge_canister, 2_000_000_000_000).await; // 2T Cycles
     let bridge_wasm = fs::read(BRIDGE_ENGINE_WASM).expect("BRIDGE_ENGINE_WASM not found");
     let bridge_settings = BridgeSettings {
         ecdsa_key_id: "dfx_test_key".to_string(),
@@ -87,7 +89,8 @@ pub fn setup() -> (PocketIc, Principal, Principal) {
         eth_min_confirmations: 12,
     };
     let args = encode_one(bridge_settings).unwrap();
-    ic.install_canister(bridge_canister, bridge_wasm, args, None);
+    ic.install_canister(bridge_canister, bridge_wasm, args, None)
+        .await;
 
     // Install EVM RPC canister
     let evm_rpc_canister = ic
@@ -96,43 +99,45 @@ pub fn setup() -> (PocketIc, Principal, Principal) {
             None,
             Principal::from_str("7hfb6-caaaa-aaaar-qadga-cai").unwrap(),
         )
+        .await
         .unwrap();
-    ic.add_cycles(evm_rpc_canister, 2_000_000_000_000); // 2T Cycles
+    ic.add_cycles(evm_rpc_canister, 2_000_000_000_000).await; // 2T Cycles
     let evm_rpc_wasm = fs::read(EVM_RPC_WASM).expect("EVM_RPC_WASM not found");
     let evm_rpc_settings = EvmRpcSettings { nodes_in_subnet: 1 };
     let args = encode_one(evm_rpc_settings).unwrap();
-    ic.install_canister(evm_rpc_canister, evm_rpc_wasm, args, None);
+    ic.install_canister(evm_rpc_canister, evm_rpc_wasm, args, None)
+        .await;
 
     // Fast forward in time to allow the ic_siwe_provider_canister to be fully installed.
     for _ in 0..5 {
-        ic.tick();
+        ic.tick().await;
     }
 
     (ic, ic_siwe_canister, bridge_canister)
 }
 
-pub fn update<T: CandidType + for<'de> Deserialize<'de>>(
+pub async fn update<T: CandidType + for<'de> Deserialize<'de>>(
     ic: &PocketIc,
     canister: Principal,
     sender: Principal,
     method: &str,
     args: Vec<u8>,
 ) -> Result<T, String> {
-    match ic.update_call(canister, sender, method, args) {
+    match ic.update_call(canister, sender, method, args).await {
         Ok(WasmResult::Reply(data)) => decode_one(&data).unwrap(),
         Ok(WasmResult::Reject(error_message)) => Err(error_message.to_string()),
         Err(user_error) => Err(user_error.to_string()),
     }
 }
 
-pub fn bridge_update<T: CandidType + for<'de> Deserialize<'de>>(
+pub async fn bridge_update<T: CandidType + for<'de> Deserialize<'de>>(
     ic: &PocketIc,
     canister: Principal,
     sender: Principal,
     method: &str,
     args: Vec<u8>,
 ) -> RpcResult<T> {
-    match ic.update_call(canister, sender, method, args) {
+    match ic.update_call(canister, sender, method, args).await {
         Ok(WasmResult::Reply(data)) => decode_one(&data).unwrap(),
         Ok(WasmResult::Reject(error_message)) => RpcResult::Err(RpcError {
             code: 500,
@@ -147,28 +152,28 @@ pub fn bridge_update<T: CandidType + for<'de> Deserialize<'de>>(
     }
 }
 
-pub fn query<T: CandidType + for<'de> Deserialize<'de>>(
+pub async fn query<T: CandidType + for<'de> Deserialize<'de>>(
     ic: &PocketIc,
     canister: Principal,
     sender: Principal,
     method: &str,
     args: Vec<u8>,
 ) -> Result<T, String> {
-    match ic.query_call(canister, sender, method, args) {
+    match ic.query_call(canister, sender, method, args).await {
         Ok(WasmResult::Reply(data)) => decode_one(&data).unwrap(),
         Ok(WasmResult::Reject(error_message)) => Err(error_message.to_string()),
         Err(user_error) => Err(user_error.to_string()),
     }
 }
 
-pub fn bridge_query<T: CandidType + for<'de> Deserialize<'de>>(
+pub async fn bridge_query<T: CandidType + for<'de> Deserialize<'de>>(
     ic: &PocketIc,
     canister: Principal,
     sender: Principal,
     method: &str,
     args: Vec<u8>,
 ) -> RpcResult<T> {
-    match ic.query_call(canister, sender, method, args) {
+    match ic.query_call(canister, sender, method, args).await {
         Ok(WasmResult::Reply(data)) => decode_one(&data).unwrap(),
         Ok(WasmResult::Reject(error_message)) => RpcResult::Err(RpcError {
             code: 500,
