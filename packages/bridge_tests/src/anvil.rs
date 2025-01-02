@@ -23,7 +23,7 @@ pub fn get_response_headers(response: &Response) -> Vec<CanisterHttpHeader> {
 // Forward an IC https outcall to local Anvil server
 pub fn anvil_request(
     canister_req: &CanisterHttpRequest,
-    anvil: AnvilInstance,
+    anvil: &AnvilInstance,
 ) -> MockCanisterHttpResponse {
     let agent = Agent::new();
     let method = match canister_req.http_method {
@@ -58,17 +58,20 @@ pub fn anvil_request(
     }
 }
 
-pub async fn await_call_and_decode<T>(
-    ic: &PocketIc,
-    response: MockCanisterHttpResponse,
-    call_id: RawMessageId,
-) -> T
+pub async fn proxy_one_https_outcall(ic: &PocketIc, anvil: &AnvilInstance) {
+    let canister_http_requests = ic.get_canister_http().await;
+    assert_eq!(canister_http_requests.len(), 1);
+    let canister_http_request = &canister_http_requests[0];
+    let canister_http_response = anvil_request(canister_http_request, anvil);
+    ic.mock_canister_http_response(canister_http_response).await;
+}
+
+pub async fn await_call_and_decode<T>(ic: &PocketIc, call_id: RawMessageId) -> T
 where
     T: CandidType + DeserializeOwned,
 {
-    ic.mock_canister_http_response(response).await;
-    let wasm_result = ic.await_call(call_id).await.unwrap();
-    match wasm_result {
+    let wasm_result = ic.await_call(call_id).await;
+    match wasm_result.unwrap() {
         WasmResult::Reply(data) => decode_one(&data).unwrap(),
         WasmResult::Reject(msg) => panic!("Unexpected reject {}", msg),
     }

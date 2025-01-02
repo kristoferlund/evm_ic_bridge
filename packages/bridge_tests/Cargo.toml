@@ -25,7 +25,11 @@ ring = "0.17.7"
 slog = "2.7.0"
 ureq = "2.12.1"
 serde_json = "1.0.134"
-alloy = { version = "0.5.4", features = ["full", "provider-anvil-node"] }
+alloy = { version = "0.5.4", features = [
+  "full",
+  "provider-anvil-node",
+  "network",
+] }
 tokio = "1.42.0"
 
 [dev-dependencies]

@@ -1,9 +1,10 @@
+use crate::types::{RpcError, RpcResult};
 use candid::{decode_one, encode_one, CandidType, Principal};
+use ic_agent::identity::DelegatedIdentity;
+use ic_agent::Identity;
 use pocket_ic::{nonblocking::PocketIc, PocketIcBuilder, WasmResult};
 use serde::{Deserialize, Serialize};
 use std::{fs, str::FromStr, time::Duration};
-
-use crate::types::{RpcError, RpcResult};
 
 pub const BRIDGE_ENGINE_WASM: &str = "../../target/wasm32-unknown-unknown/release/bridge.wasm.gz";
 pub const IC_SIWE_WASM: &str = "../ic_siwe_provider/ic_siwe_provider.wasm.gz";
@@ -200,4 +201,21 @@ macro_rules! assert_starts_with {
             );
         }
     }};
+}
+
+pub async fn get_eth_pool_address(
+    ic: &PocketIc,
+    bridge: Principal,
+    identity: &DelegatedIdentity,
+) -> String {
+    let response: RpcResult<String> = bridge_update(
+        ic,
+        bridge,
+        identity.sender().unwrap(),
+        "eth_pool_address",
+        encode_one(()).unwrap(),
+    )
+    .await;
+    assert!(response.is_ok());
+    response.unwrap_ok().clone()
 }
