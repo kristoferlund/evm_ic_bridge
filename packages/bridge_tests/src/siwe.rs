@@ -4,7 +4,6 @@ use crate::{
 };
 use alloy::{
     node_bindings::{Anvil, AnvilInstance},
-    primitives::Signature,
     signers::{local::PrivateKeySigner, Signer},
 };
 use candid::{encode_args, encode_one, CandidType, Principal};
@@ -31,10 +30,6 @@ struct PrepareLoginOkResponse {
     nonce: String,
 }
 
-pub fn signature_to_hex_str(signature: &Signature) -> String {
-    format!("0x{}", hex::encode(signature.as_bytes()))
-}
-
 pub async fn prepare_login_and_sign_message(
     ic: &PocketIc,
     ic_siwe_provider_canister: Principal,
@@ -57,7 +52,7 @@ pub async fn prepare_login_and_sign_message(
         .unwrap();
 
     (
-        signature_to_hex_str(&signature),
+        format!("0x{}", hex::encode(signature.as_bytes())),
         response.siwe_message,
         response.nonce,
     )
