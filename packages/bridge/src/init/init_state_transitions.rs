@@ -26,7 +26,7 @@ impl InitStateTransitions {
 
     pub fn init_signer(address: EthAddressBytes, signer: IcpSigner) {
         STATE.with_borrow_mut(|state| {
-            state.canister_eth_address = Some(address);
+            state.eth_pool_address = Some(address);
             state.signer = Some(signer);
         });
     }

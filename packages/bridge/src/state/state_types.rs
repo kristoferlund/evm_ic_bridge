@@ -15,7 +15,7 @@ pub struct State {
     pub eth_min_confirmations: u64,
 
     // Runtime
-    pub canister_eth_address: Option<EthAddressBytes>,
+    pub eth_pool_address: Option<EthAddressBytes>,
     pub signer: Option<IcpSigner>,
 
     pub users: HashMap<Principal, User>,

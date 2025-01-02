@@ -47,7 +47,7 @@ impl EthPoolManager {
             .to
             .ok_or_else(|| anyhow!("Transaction has no recipient"))?;
         let canister_eth_address = STATE
-            .with_borrow(|state| state.canister_eth_address)
+            .with_borrow(|state| state.eth_pool_address)
             .ok_or_else(|| anyhow!("Canister address not set"))?;
         if tx_to != canister_eth_address {
             return Err(anyhow!("Transaction not sent to canister address").into());

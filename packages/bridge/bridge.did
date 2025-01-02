@@ -16,13 +16,15 @@ type InitArgs = record {
   siwe_provider_canister : text;
   eth_min_confirmations : nat64;
 };
-type Result = variant { Ok : EthPoolLiquidityPositionDto; Err : HttpError };
-type Result_1 = variant { Ok : vec Event; Err : HttpError };
-type Result_2 = variant { Ok : UserDto; Err : HttpError };
+type Result = variant { Ok : text; Err : HttpError };
+type Result_1 = variant { Ok : EthPoolLiquidityPositionDto; Err : HttpError };
+type Result_2 = variant { Ok : vec Event; Err : HttpError };
+type Result_3 = variant { Ok : UserDto; Err : HttpError };
 type UserDto = record { "principal" : principal; eth_address : opt text };
 service : (InitArgs) -> {
-  eth_pool_create_position : (text) -> (Result);
-  event_log : () -> (Result_1) query;
-  user_create : () -> (Result_2);
-  user_register_eth_address : () -> (Result_2);
+  eth_pool_address : () -> (Result) query;
+  eth_pool_create_position : (text) -> (Result_1);
+  event_log : () -> (Result_2) query;
+  user_create : () -> (Result_3);
+  user_register_eth_address : () -> (Result_3);
 }
