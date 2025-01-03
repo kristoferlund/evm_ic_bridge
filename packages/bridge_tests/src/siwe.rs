@@ -95,7 +95,6 @@ pub async fn full_login(
     targets: Option<Vec<Principal>>,
 ) -> (AnvilInstance, PrivateKeySigner, String, DelegatedIdentity) {
     let anvil = Anvil::new()
-        .block_time(1)
         .try_spawn()
         .expect("Failed to spawn Anvil instance. Ensure `anvil` is available in $PATH.");
 

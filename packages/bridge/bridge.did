@@ -1,5 +1,7 @@
 type EthPoolLiquidityPositionDto = record {
   last_claimed_fee_per_token : text;
+  timestamp : nat64;
+  tx_hash : text;
   amount : text;
 };
 type Event = variant {
@@ -7,7 +9,7 @@ type Event = variant {
   RegisterEthAddress : record { principal; blob };
   CreateUser : principal;
   PostUpgrade : InitArgs;
-  EThPoolCreatePosition : record { principal; text };
+  EThPoolCreatePosition : record { principal; text; blob; nat64 };
 };
 type HttpError = record { code : nat16; message : text; details : opt text };
 type InitArgs = record {

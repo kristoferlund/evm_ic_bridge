@@ -9,6 +9,7 @@ use pocket_ic::{
     WasmResult,
 };
 use serde::de::DeserializeOwned;
+use serde_json::json;
 use ureq::{Agent, Response};
 
 pub fn get_response_headers(response: &Response) -> Vec<CanisterHttpHeader> {
@@ -75,4 +76,27 @@ where
         WasmResult::Reply(data) => decode_one(&data).unwrap(),
         WasmResult::Reject(msg) => panic!("Unexpected reject {}", msg),
     }
+}
+
+pub fn mine_blocks(
+    anvil: &AnvilInstance,
+    num_blocks: u64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let agent = Agent::new();
+
+    let request = agent.request("POST", anvil.endpoint_url().as_str());
+
+    let payload = json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "anvil_mine",
+        "params": [format!("0x{:x}", num_blocks)]
+    });
+
+    let _ = request
+        .set("Content-Type", "application/json")
+        .send_string(&payload.to_string())
+        .unwrap();
+
+    Ok(())
 }

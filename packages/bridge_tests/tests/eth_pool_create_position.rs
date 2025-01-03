@@ -6,7 +6,7 @@ use alloy::{
     signers::local::PrivateKeySigner,
 };
 use bridge_tests::{
-    anvil::{await_call_and_decode, proxy_one_https_outcall},
+    anvil::{await_call_and_decode, mine_blocks, proxy_one_https_outcall},
     common::{bridge_update, get_eth_pool_address, setup, tick},
     siwe::{create_basic_identity, full_login_with_eth_registered},
     types::{EthPoolLiquidityPositionDto, RpcResult},
@@ -249,6 +249,48 @@ async fn tx_not_enough_confirmations() {
         response.details.as_ref().unwrap(),
         "Transaction error: Transaction has not enough confirmations"
     );
+
+    ic.drop().await;
+}
+
+#[tokio::test]
+async fn create_position() {
+    let (ic, siwe, bridge) = setup().await;
+    let (anvil, _, _, identity) = full_login_with_eth_registered(&ic, siwe, bridge, None).await;
+    let eth_pool_address = get_eth_pool_address(&ic, bridge, &identity).await;
+    let provider = ProviderBuilder::new().on_http(anvil.endpoint_url());
+
+    let tx = TransactionRequest::default()
+        .with_to(alloy::primitives::Address::parse_checksummed(eth_pool_address, None).unwrap())
+        .with_nonce(0)
+        .with_value(U256::from(100))
+        .with_gas_limit(21_000)
+        .with_max_priority_fee_per_gas(1_000_000_000)
+        .with_max_fee_per_gas(20_000_000_000);
+    let pending_tx = provider.send_transaction(tx).await.unwrap();
+    let tx_receipt = pending_tx.get_receipt().await.unwrap();
+    let tx_hash = format!("0x{}", hex::encode(tx_receipt.transaction_hash));
+
+    let _ = mine_blocks(&anvil, 15);
+
+    let call_id = ic
+        .submit_call(
+            bridge,
+            identity.sender().unwrap(),
+            "eth_pool_create_position",
+            encode_one(tx_hash).unwrap(),
+        )
+        .await
+        .unwrap();
+    tick(&ic, 2).await;
+    proxy_one_https_outcall(&ic, &anvil).await; // Transaction referenced by hash
+    tick(&ic, 5).await;
+    proxy_one_https_outcall(&ic, &anvil).await; // Latests block
+    let response: RpcResult<EthPoolLiquidityPositionDto> =
+        await_call_and_decode(&ic, call_id).await;
+
+    dbg!(&response);
+    assert!(response.is_err());
 
     ic.drop().await;
 }
