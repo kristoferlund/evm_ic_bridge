@@ -13,7 +13,9 @@ pub enum UserError {
     NoEthAddress,
 }
 
+// TODO: These should be moved to a more appropriate place
 pub type EthAddressBytes = [u8; 20];
+pub type EthTxHashBytes = [u8; 32];
 
 #[derive(Clone)]
 pub struct User {

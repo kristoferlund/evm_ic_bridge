@@ -2,7 +2,7 @@ use super::{eth_pool_types::EthPoolLiquidityPosition, EthPoolError, EthPoolState
 use crate::{
     event::{Event, EventPublisher},
     evm::utils::get_rpc_service,
-    user::{UserError, UserManager},
+    user::{user_types::EthTxHashBytes, UserError, UserManager},
     STATE,
 };
 use alloy::{
@@ -18,17 +18,17 @@ pub struct EthPoolManager {}
 impl EthPoolManager {
     pub async fn create_position(
         user_principal: Principal,
-        hash: FixedBytes<32>,
+        hash: EthTxHashBytes,
     ) -> Result<EthPoolLiquidityPosition, EthPoolError> {
-        let user = UserManager::get_by_principal(user_principal)?;
-        let user_eth_address = user.eth_address.ok_or(UserError::NoEthAddress)?;
-        let user_eth_address = Address::from_slice(user_eth_address.as_slice());
+        if EthPoolManager::position_already_created(user_principal, hash) {
+            return Err(anyhow!("Position already created").into());
+        }
 
         let rpc_service = get_rpc_service();
         let config = IcpConfig::new(rpc_service);
         let provider = ProviderBuilder::new().on_icp(config);
         let tx = provider
-            .get_transaction_by_hash(hash)
+            .get_transaction_by_hash(FixedBytes::from_slice(hash.as_slice()))
             .await?
             .ok_or_else(|| anyhow!("Transaction not found"))?;
 
@@ -38,6 +38,9 @@ impl EthPoolManager {
             .ok_or_else(|| anyhow!("Transaction not mined"))?;
 
         // Verify that the transaction was sent by the caller
+        let user = UserManager::get_by_principal(user_principal)?;
+        let user_eth_address = user.eth_address.ok_or(UserError::NoEthAddress)?;
+        let user_eth_address = Address::from_slice(user_eth_address.as_slice());
         if tx.from != user_eth_address {
             return Err(anyhow!("Transaction not sent by caller").into());
         }
@@ -61,14 +64,29 @@ impl EthPoolManager {
             return Err(anyhow!("Transaction has not enough confirmations").into());
         }
 
+        let timestamp = ic_cdk::api::time();
+
         // Adding liquidity
-        let position = EthPoolStateTransitions::create_position(user_principal, tx.value);
+        let position =
+            EthPoolStateTransitions::create_position(user_principal, tx.value, hash, timestamp);
         EventPublisher::publish(Event::EThPoolCreatePosition(
             user_principal,
             tx.value.to_string(),
+            hash,
+            timestamp,
         ))
         .unwrap();
 
         Ok(position)
+    }
+
+    pub fn position_already_created(user_principal: Principal, hash: EthTxHashBytes) -> bool {
+        STATE.with_borrow(|state| {
+            state
+                .eth_pool_liquidity_positions
+                .get(&user_principal)
+                .map(|positions| positions.iter().any(|position| position.tx_hash == hash))
+                .unwrap_or(false)
+        })
     }
 }

@@ -23,12 +23,12 @@ impl EventProcessor {
             Event::RegisterEthAddress(principal, eth_address) => {
                 UserStateTransitions::set_eth_address(principal, eth_address);
             }
-
-            Event::EThPoolCreatePosition(principal, value) => {
+            Event::EThPoolCreatePosition(principal, value, tx_hash, timestamp) => {
                 EthPoolStateTransitions::create_position(
                     principal,
-                    U256::from_str_radix(&value, 16).unwrap(), //TODO: error handling + make sure
-                                                               // radix is correct
+                    U256::from_str_radix(&value, 16).unwrap(), //TODO: error handling + make sure radix is correct
+                    tx_hash,
+                    timestamp,
                 );
             }
         }
