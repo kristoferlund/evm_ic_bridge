@@ -3,6 +3,47 @@ dfx canister create evm_rpc
 dfx canister create bridge
 dfx canister create frontend
 dfx canister create ic_siwe_provider
+dfx canister create icrc1_ledger
+dfx canister create icrc1_index
+
+# Use the currently active identity as the owner for the token
+export OWNER=$(dfx identity get-principal)
+
+# Deploy token ledger for local ckSepoliaETH
+dfx deploy icrc1_ledger --argument '
+  (variant {
+    Init = record {
+      token_name = "Chain key Sepolia Ethereum";
+      token_symbol = "ckSepoliaETH";
+      decimals = opt 18;
+      minting_account = record {
+        owner = principal "'${OWNER}'";
+      };
+      initial_balances = vec {
+        record {
+          record {
+            owner = principal "'${OWNER}'";
+          };
+          100_000_000_000;
+        };
+      };
+      metadata = vec {};
+      transfer_fee = 10;
+      archive_options = record {
+        trigger_threshold = 2000;
+        num_blocks_to_archive = 1000;
+        controller_id = principal "'${OWNER}'";
+      }
+    }
+  })
+'
+
+# Deploy token index canister for local ckSepoliaETH
+dfx deploy icrc1_index --argument '
+  record {
+   ledger_id = (principal "apia6-jaaaa-aaaar-qabma-cai");
+  }
+'
 
 dfx deploy ic_siwe_provider --argument $'(
     record {
