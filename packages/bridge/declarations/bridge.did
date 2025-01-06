@@ -1,0 +1,32 @@
+type EthPoolLiquidityPositionDto = record {
+  last_claimed_fee_per_token : text;
+  timestamp : nat64;
+  tx_hash : text;
+  amount : text;
+};
+type Event = variant {
+  Init : InitArgs;
+  RegisterEthAddress : record { principal; blob };
+  CreateUser : principal;
+  PostUpgrade : InitArgs;
+  EThPoolCreatePosition : record { principal; text; blob; nat64 };
+};
+type HttpError = record { code : nat16; message : text; details : opt text };
+type InitArgs = record {
+  ecdsa_key_id : text;
+  evm_rpc_url : text;
+  siwe_provider_canister : text;
+  eth_min_confirmations : nat64;
+};
+type Result = variant { Ok : text; Err : HttpError };
+type Result_1 = variant { Ok : EthPoolLiquidityPositionDto; Err : HttpError };
+type Result_2 = variant { Ok : vec Event; Err : HttpError };
+type Result_3 = variant { Ok : UserDto; Err : HttpError };
+type UserDto = record { "principal" : principal; eth_address : opt text };
+service : (InitArgs) -> {
+  eth_pool_address : () -> (Result) query;
+  eth_pool_create_position : (text) -> (Result_1);
+  event_log : () -> (Result_2) query;
+  user_create : () -> (Result_3);
+  user_register_eth_address : () -> (Result_3);
+}
