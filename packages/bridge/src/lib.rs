@@ -11,6 +11,7 @@ use state::state_types::State;
 use std::cell::RefCell;
 use user::user_types::UserDto;
 
+pub mod ck_pool;
 pub mod declarations;
 pub mod eth_pool;
 pub mod event;

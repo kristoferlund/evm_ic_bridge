@@ -5,3 +5,7 @@
 pub mod ic_siwe_provider;
 #[rustfmt::skip]
 pub mod evm_rpc;
+#[rustfmt::skip]
+pub mod icrc1_ledger;
+#[rustfmt::skip]
+pub mod icrc1_index;

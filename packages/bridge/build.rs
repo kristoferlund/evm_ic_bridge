@@ -43,6 +43,32 @@ fn main() {
         .set_type_attributes("#[derive(Debug, CandidType, Deserialize, Clone)]".into());
     builder.add(evm_rpc);
 
+    // icrc1_ledger
+
+    let icrc1_ledger_did_path = manifest_dir.join("../icrc1_ledger/declarations/icrc1_ledger.did");
+    let icrc1_ledger_did_str = icrc1_ledger_did_path.to_str().expect("Path invalid");
+    unsafe {
+        env::set_var("CANISTER_CANDID_PATH_ICRC1_LEDGER", icrc1_ledger_did_str);
+    }
+    let mut icrc1_ledger = Config::new("icrc1_ledger");
+    icrc1_ledger
+        .binding
+        .set_type_attributes("#[derive(Debug, CandidType, Deserialize, Clone)]".into());
+    builder.add(icrc1_ledger);
+
+    // icrc1_index
+
+    let icrc1_index_did_path = manifest_dir.join("../icrc1_index/declarations/icrc1_index.did");
+    let icrc1_index_did_str = icrc1_index_did_path.to_str().expect("Path invalid");
+    unsafe {
+        env::set_var("CANISTER_CANDID_PATH_ICRC1_INDEX", icrc1_index_did_str);
+    }
+    let mut icrc1_index = Config::new("icrc1_index");
+    icrc1_index
+        .binding
+        .set_type_attributes("#[derive(Debug, CandidType, Deserialize, Clone)]".into());
+    builder.add(icrc1_index);
+
     // Generate the bindings
 
     builder.build(Some(manifest_dir.join("src/declarations")));
