@@ -449,7 +449,12 @@ impl Context {
     }
 
     // Send some ETH to the eth pool address from the
-    pub async fn send_eth_to_pool_address(&self, from: usize, amount: u32) -> EthTxHash {
+    pub async fn send_eth_to_pool_address(
+        &self,
+        from: usize,
+        amount: u32,
+        nonce: u64,
+    ) -> EthTxHash {
         let anvil = self.anvil.as_ref().unwrap();
         let provider = ProviderBuilder::new().on_http(anvil.endpoint_url());
         let signer: PrivateKeySigner = anvil.keys()[from].clone().into();
@@ -457,7 +462,7 @@ impl Context {
         let tx = TransactionRequest::default()
             .with_from(signer.address())
             .with_to(alloy::primitives::Address::parse_checksummed(eth_pool_address, None).unwrap())
-            .with_nonce(0)
+            .with_nonce(nonce)
             .with_value(U256::from(amount))
             .with_gas_limit(21_000)
             .with_max_priority_fee_per_gas(1_000_000_000)

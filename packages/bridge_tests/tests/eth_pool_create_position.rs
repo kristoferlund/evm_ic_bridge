@@ -95,7 +95,7 @@ async fn tx_wrong_sender() {
     let (_, _, identity) = context.full_login_with_eth_registered(0, None).await;
 
     // Make transfer from an account that is not the currently logged in user
-    let tx_hash = context.send_eth_to_pool_address(1, 100).await;
+    let tx_hash = context.send_eth_to_pool_address(1, 100, 0).await;
 
     // Create a position for a transaction that was not sent by the currently logged in user
     let response = context
@@ -160,7 +160,7 @@ async fn tx_not_enough_confirmations() {
     let (_, _, identity) = context.full_login_with_eth_registered(0, None).await;
 
     // Send some ETH to the eth pool address
-    let tx_hash = context.send_eth_to_pool_address(0, 100).await;
+    let tx_hash = context.send_eth_to_pool_address(0, 100, 0).await;
 
     // Create a position withouth waiting for the transaction to be confirmed
     let response = context
@@ -178,6 +178,34 @@ async fn tx_not_enough_confirmations() {
     context.teardown_default().await;
 }
 
+#[tokio::test]
+async fn invalid_position_amount() {
+    let mut context = Context::new();
+    let context = context.setup_default().await;
+
+    // Send an invalid amount of ETH to the eth pool address
+    let tx_hash = context.send_eth_to_pool_address(0, 0, 0).await;
+
+    // Mine enough blocks to have the transaction confirmed
+    let _ = context.anvil_mine_blocks(15);
+
+    // Login user, link eth and attempt to create position
+    let (_, _, identity) = context.full_login_with_eth_registered(0, None).await;
+    let response = context
+        .create_eth_position(&identity.sender().unwrap(), &tx_hash)
+        .await;
+
+    assert!(response.is_err());
+    let response = response.unwrap_err();
+    assert!(matches!(response.code, 400));
+    assert_eq!(
+        response.details.as_ref().unwrap(),
+        "Transaction error: Invalid position amount"
+    );
+
+    context.teardown_default().await;
+}
+
 // Successfully create a position
 #[tokio::test]
 async fn create_position() {
@@ -186,7 +214,7 @@ async fn create_position() {
 
     // Send some ETH to the eth pool address
     let amount = 100;
-    let tx_hash = context.send_eth_to_pool_address(0, amount).await;
+    let tx_hash = context.send_eth_to_pool_address(0, amount, 0).await;
 
     // Mine enough blocks to have the transaction confirmed
     let _ = context.anvil_mine_blocks(15);
@@ -201,6 +229,81 @@ async fn create_position() {
     let response = response.unwrap_ok();
     assert_eq!(response.tx_hash, tx_hash);
     assert_eq!(response.amount, amount.to_string());
+
+    context.teardown_default().await;
+}
+
+#[tokio::test]
+async fn create_position_twice() {
+    let mut context = Context::new();
+    let context = context.setup_default().await;
+
+    // Send some ETH to the eth pool address
+    let amount = 100;
+    let tx_hash = context.send_eth_to_pool_address(0, amount, 0).await;
+
+    // Mine enough blocks to have the transaction confirmed
+    let _ = context.anvil_mine_blocks(15);
+
+    // Login in user, link eth and create position
+    let (_, _, identity) = context.full_login_with_eth_registered(0, None).await;
+
+    // First attempt to create a position
+    let first_response = context
+        .create_eth_position(&identity.sender().unwrap(), &tx_hash)
+        .await;
+
+    assert!(first_response.is_ok());
+    let first_result = first_response.unwrap_ok();
+    assert_eq!(first_result.tx_hash, tx_hash);
+    assert_eq!(first_result.amount, amount.to_string());
+
+    // Second attempt to create a position with the same transaction
+    let second_response = context
+        .create_eth_position(&identity.sender().unwrap(), &tx_hash)
+        .await;
+
+    assert!(second_response.is_err());
+    let second_result = second_response.unwrap_err();
+    assert!(matches!(second_result.code, 400));
+    assert_eq!(
+        second_result.details.as_ref().unwrap(),
+        "Transaction error: Position already created"
+    );
+
+    context.teardown_default().await;
+}
+
+#[tokio::test]
+async fn multiple_positions_different_transactions() {
+    let mut context = Context::new();
+    let context = context.setup_default().await;
+
+    // Send ETH with two separate transactions
+    let tx_hash_1 = context.send_eth_to_pool_address(0, 100, 0).await;
+    let tx_hash_2 = context.send_eth_to_pool_address(0, 200, 1).await;
+
+    // Mine enough blocks for confirmations
+    let _ = context.anvil_mine_blocks(15);
+
+    // Login user, link eth and create positions
+    let (_, _, identity) = context.full_login_with_eth_registered(0, None).await;
+
+    let response_1 = context
+        .create_eth_position(&identity.sender().unwrap(), &tx_hash_1)
+        .await;
+    assert!(response_1.is_ok());
+    let response_1 = response_1.unwrap_ok();
+    assert_eq!(response_1.tx_hash, tx_hash_1);
+    assert_eq!(response_1.amount, "100");
+
+    let response_2 = context
+        .create_eth_position(&identity.sender().unwrap(), &tx_hash_2)
+        .await;
+    assert!(response_2.is_ok());
+    let response_2 = response_2.unwrap_ok();
+    assert_eq!(response_2.tx_hash, tx_hash_2);
+    assert_eq!(response_2.amount, "200");
 
     context.teardown_default().await;
 }

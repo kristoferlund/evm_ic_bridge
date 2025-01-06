@@ -64,6 +64,11 @@ impl EthPoolManager {
             return Err(anyhow!("Transaction has not enough confirmations").into());
         }
 
+        // Verify that the amount is greater than 0
+        if tx.value.is_zero() {
+            return Err(anyhow!("Invalid position amount").into());
+        }
+
         let timestamp = ic_cdk::api::time();
 
         // Adding liquidity
