@@ -75,3 +75,44 @@ pub struct EthPoolLiquidityPositionDto {
     pub tx_hash: String,
     pub timestamp: u64,
 }
+
+#[derive(CandidType, Debug, Clone, PartialEq, Deserialize)]
+pub enum RuntimeFeature {
+    IncludeUriInSeed,
+    DisableEthToPrincipalMapping,
+    DisablePrincipalToEthMapping,
+}
+
+#[derive(CandidType, Deserialize, Debug, Clone)]
+pub struct SettingsInput {
+    pub domain: String,
+    pub uri: String,
+    pub salt: String,
+    pub chain_id: Option<u32>,
+    pub scheme: Option<String>,
+    pub statement: Option<String>,
+    pub sign_in_expires_in: Option<u64>,
+    pub session_expires_in: Option<u64>,
+    pub targets: Option<Vec<String>>,
+    pub runtime_features: Option<Vec<RuntimeFeature>>,
+}
+
+#[derive(Serialize, Deserialize, CandidType)]
+pub struct BridgeSettings {
+    pub ecdsa_key_id: String,
+    pub siwe_provider_canister: String,
+    pub evm_rpc_url: String,
+    pub eth_min_confirmations: u64,
+}
+
+#[derive(Serialize, Deserialize, CandidType)]
+pub struct EvmRpcSettings {
+    #[serde(rename = "nodesInSubnet")]
+    pub nodes_in_subnet: u32,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct PrepareLoginOkResponse {
+    pub siwe_message: String,
+    pub nonce: String,
+}

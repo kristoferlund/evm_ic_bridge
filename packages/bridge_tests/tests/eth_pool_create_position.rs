@@ -6,9 +6,8 @@ use alloy::{
     signers::local::PrivateKeySigner,
 };
 use bridge_tests::{
-    anvil::{await_call_and_decode, mine_blocks, proxy_one_https_outcall},
-    common::{bridge_update, get_eth_pool_address, setup, tick},
-    siwe::{create_basic_identity, full_login_with_eth_registered},
+    common::create_basic_identity,
+    context::Context,
     types::{EthPoolLiquidityPositionDto, RpcResult},
 };
 use candid::{encode_one, Principal};
@@ -20,73 +19,76 @@ const INVALID_HASH: &str = "0x1234";
 // Anon call should fail
 #[tokio::test]
 async fn anon() {
-    let (ic, _, bridge) = setup().await;
-    let response: RpcResult<EthPoolLiquidityPositionDto> = bridge_update(
-        &ic,
-        bridge,
-        Principal::anonymous(),
-        "eth_pool_create_position",
-        encode_one(TX_NOT_FOUND).unwrap(),
-    )
-    .await;
-
-    dbg!(&response);
+    let mut context = Context::new();
+    let context = context.setup_default().await;
+    let response: RpcResult<EthPoolLiquidityPositionDto> = context
+        .update_call_unwrap(
+            context.bridge_canister,
+            Principal::anonymous(),
+            "eth_pool_create_position",
+            encode_one(TX_NOT_FOUND).unwrap(),
+        )
+        .await;
 
     assert!(response.is_err());
     assert!(matches!(response.unwrap_err().code, 401));
 
-    ic.drop().await;
+    context.teardown_default().await;
 }
 
 // Non SIWE identity should fail
 #[tokio::test]
 async fn non_siwe_id() {
-    let (ic, _, bridge) = setup().await;
+    let mut context = Context::new();
+    let context = context.setup_default().await;
     let identity = create_basic_identity();
-    let response: RpcResult<EthPoolLiquidityPositionDto> = bridge_update(
-        &ic,
-        bridge,
-        identity.sender().unwrap(),
-        "eth_pool_create_position",
-        encode_one(TX_NOT_FOUND).unwrap(),
-    )
-    .await;
+    let response: RpcResult<EthPoolLiquidityPositionDto> = context
+        .update_call_unwrap(
+            context.bridge_canister,
+            identity.sender().unwrap(),
+            "eth_pool_create_position",
+            encode_one(TX_NOT_FOUND).unwrap(),
+        )
+        .await;
     assert!(response.is_err());
     assert!(matches!(response.unwrap_err().code, 401));
 
-    ic.drop().await;
+    context.teardown_default().await;
 }
 
 // Creating position with invalid hash should fail
 #[tokio::test]
 async fn invalid_hash() {
-    let (ic, siwe, bridge) = setup().await;
-    let (_, _, _, identity) = full_login_with_eth_registered(&ic, siwe, bridge, None).await;
-    let response: RpcResult<EthPoolLiquidityPositionDto> = bridge_update(
-        &ic,
-        bridge,
-        identity.sender().unwrap(),
-        "eth_pool_create_position",
-        encode_one(INVALID_HASH).unwrap(),
-    )
-    .await;
+    let mut context = Context::new();
+    let context = context.setup_default().await;
+    let (_, _, identity) = context.full_login_with_eth_registered(0, None).await;
+    let response: RpcResult<EthPoolLiquidityPositionDto> = context
+        .update_call_unwrap(
+            context.bridge_canister,
+            identity.sender().unwrap(),
+            "eth_pool_create_position",
+            encode_one(INVALID_HASH).unwrap(),
+        )
+        .await;
     assert!(response.is_err());
     let response = response.unwrap_err();
     assert!(matches!(response.code, 400));
     assert_eq!(response.details.as_ref().unwrap(), "Invalid hex string");
 
-    ic.drop().await;
+    context.teardown_default().await;
 }
 
 // Creating position with a transaction that does not exist should fail
 #[tokio::test]
 async fn tx_not_found() {
-    let (ic, siwe, bridge) = setup().await;
-    let (anvil, _, _, identity) = full_login_with_eth_registered(&ic, siwe, bridge, None).await;
+    let mut context = Context::new();
+    let context = context.setup_default().await;
+    let (_, _, identity) = context.full_login_with_eth_registered(0, None).await;
 
+    let ic = context.ic.as_ref().unwrap();
     let call_id = ic
         .submit_call(
-            bridge,
+            context.bridge_canister,
             identity.sender().unwrap(),
             "eth_pool_create_position",
             encode_one(TX_NOT_FOUND).unwrap(),
@@ -94,12 +96,12 @@ async fn tx_not_found() {
         .await
         .unwrap();
 
-    tick(&ic, 2).await;
+    context.tick(2).await;
 
-    proxy_one_https_outcall(&ic, &anvil).await; // Transaction referenced by hash
+    context.proxy_one_https_outcall_to_anvil().await; // Transaction referenced by hash
 
     let response: RpcResult<EthPoolLiquidityPositionDto> =
-        await_call_and_decode(&ic, call_id).await;
+        context.await_call_and_decode(call_id).await;
 
     assert!(response.is_err());
     let response = response.unwrap_err();
@@ -109,46 +111,36 @@ async fn tx_not_found() {
         "Transaction error: Transaction not found"
     );
 
-    ic.drop().await;
+    context.teardown_default().await;
 }
 
 // Only the currently logged in user can create a position related to a transaction
 // they sent
 #[tokio::test]
 async fn tx_wrong_sender() {
-    let (ic, siwe, bridge) = setup().await;
-    let (anvil, _, _, identity) = full_login_with_eth_registered(&ic, siwe, bridge, None).await;
-    let eth_pool_address = get_eth_pool_address(&ic, bridge, &identity).await;
-    let provider = ProviderBuilder::new().on_http(anvil.endpoint_url());
+    let mut context = Context::new();
+    let context = context.setup_default().await;
+    let (_, _, identity) = context.full_login_with_eth_registered(0, None).await;
 
-    let signer1: PrivateKeySigner = anvil.keys()[1].clone().into();
+    // Make transfer from an account that is not the currently logged in user
+    let tx_hash = context.send_eth_to_pool_address(1, 100).await;
 
-    let tx = TransactionRequest::default()
-        .with_from(signer1.address())
-        .with_to(alloy::primitives::Address::parse_checksummed(eth_pool_address, None).unwrap())
-        .with_nonce(0)
-        .with_value(U256::from(100))
-        .with_gas_limit(21_000)
-        .with_max_priority_fee_per_gas(1_000_000_000)
-        .with_max_fee_per_gas(20_000_000_000);
-    let pending_tx = provider.send_transaction(tx).await.unwrap();
-    let tx_receipt = pending_tx.get_receipt().await.unwrap();
-    let tx_hash = format!("0x{}", hex::encode(tx_receipt.transaction_hash));
-
+    // Create a position for a transaction that was not sent by the currently logged in user
+    let ic = context.ic.as_ref().unwrap();
     let call_id = ic
         .submit_call(
-            bridge,
+            context.bridge_canister,
             identity.sender().unwrap(),
             "eth_pool_create_position",
             encode_one(tx_hash).unwrap(),
         )
         .await
         .unwrap();
-    tick(&ic, 2).await;
-    proxy_one_https_outcall(&ic, &anvil).await; // Transaction referenced by hash
+    context.tick(2).await;
+    context.proxy_one_https_outcall_to_anvil().await; // Transaction referenced by hash
 
     let response: RpcResult<EthPoolLiquidityPositionDto> =
-        await_call_and_decode(&ic, call_id).await;
+        context.await_call_and_decode(call_id).await;
 
     assert!(response.is_err());
     let response = response.unwrap_err();
@@ -158,18 +150,21 @@ async fn tx_wrong_sender() {
         "Transaction error: Transaction not sent by caller"
     );
 
-    ic.drop().await;
+    context.teardown_default().await;
 }
 
 // Make sure transaction was sent to the canister address
 #[tokio::test]
 async fn tx_wrong_recipient() {
-    let (ic, siwe, bridge) = setup().await;
-    let (anvil, _, _, identity) = full_login_with_eth_registered(&ic, siwe, bridge, None).await;
+    let mut context = Context::new();
+    let context = context.setup_default().await;
+    let (_, _, identity) = context.full_login_with_eth_registered(0, None).await;
+    let anvil = context.anvil.as_ref().unwrap();
     let provider = ProviderBuilder::new().on_http(anvil.endpoint_url());
 
     let signer1: PrivateKeySigner = anvil.keys()[1].clone().into();
 
+    // Send to signer1 instead of the eth pool address
     let tx = TransactionRequest::default()
         .with_to(signer1.address())
         .with_nonce(0)
@@ -181,20 +176,22 @@ async fn tx_wrong_recipient() {
     let tx_receipt = pending_tx.get_receipt().await.unwrap();
     let tx_hash = format!("0x{}", hex::encode(tx_receipt.transaction_hash));
 
+    // Attempt to create a position for a transaction that was not sent to the eth pool address
+    let ic = context.ic.as_ref().unwrap();
     let call_id = ic
         .submit_call(
-            bridge,
+            context.bridge_canister,
             identity.sender().unwrap(),
             "eth_pool_create_position",
             encode_one(tx_hash).unwrap(),
         )
         .await
         .unwrap();
-    tick(&ic, 2).await;
-    proxy_one_https_outcall(&ic, &anvil).await; // Transaction referenced by hash
+    context.tick(2).await;
+    context.proxy_one_https_outcall_to_anvil().await; // Transaction referenced by hash
 
     let response: RpcResult<EthPoolLiquidityPositionDto> =
-        await_call_and_decode(&ic, call_id).await;
+        context.await_call_and_decode(call_id).await;
 
     assert!(response.is_err());
     let response = response.unwrap_err();
@@ -204,43 +201,36 @@ async fn tx_wrong_recipient() {
         "Transaction error: Transaction not sent to canister address"
     );
 
-    ic.drop().await;
+    context.teardown_default().await;
 }
 
 // Transaction needs to have enough confirmations to be accepted
 #[tokio::test]
 async fn tx_not_enough_confirmations() {
-    let (ic, siwe, bridge) = setup().await;
-    let (anvil, _, _, identity) = full_login_with_eth_registered(&ic, siwe, bridge, None).await;
-    let eth_pool_address = get_eth_pool_address(&ic, bridge, &identity).await;
-    let provider = ProviderBuilder::new().on_http(anvil.endpoint_url());
+    let mut context = Context::new();
+    let context = context.setup_default().await;
+    let (_, _, identity) = context.full_login_with_eth_registered(0, None).await;
 
-    let tx = TransactionRequest::default()
-        .with_to(alloy::primitives::Address::parse_checksummed(eth_pool_address, None).unwrap())
-        .with_nonce(0)
-        .with_value(U256::from(100))
-        .with_gas_limit(21_000)
-        .with_max_priority_fee_per_gas(1_000_000_000)
-        .with_max_fee_per_gas(20_000_000_000);
-    let pending_tx = provider.send_transaction(tx).await.unwrap();
-    let tx_receipt = pending_tx.get_receipt().await.unwrap();
-    let tx_hash = format!("0x{}", hex::encode(tx_receipt.transaction_hash));
+    // Send some ETH to the eth pool address
+    let tx_hash = context.send_eth_to_pool_address(0, 100).await;
 
+    // Create a position withouth waiting for the transaction to be confirmed
+    let ic = context.ic.as_ref().unwrap();
     let call_id = ic
         .submit_call(
-            bridge,
+            context.bridge_canister,
             identity.sender().unwrap(),
             "eth_pool_create_position",
             encode_one(tx_hash).unwrap(),
         )
         .await
         .unwrap();
-    tick(&ic, 2).await;
-    proxy_one_https_outcall(&ic, &anvil).await; // Transaction referenced by hash
-    tick(&ic, 5).await;
-    proxy_one_https_outcall(&ic, &anvil).await; // Latests block
+    context.tick(2).await;
+    context.proxy_one_https_outcall_to_anvil().await; // Transaction referenced by hash
+    context.tick(5).await;
+    context.proxy_one_https_outcall_to_anvil().await; // Latests block
     let response: RpcResult<EthPoolLiquidityPositionDto> =
-        await_call_and_decode(&ic, call_id).await;
+        context.await_call_and_decode(call_id).await;
 
     assert!(response.is_err());
     let response = response.unwrap_err();
@@ -250,47 +240,43 @@ async fn tx_not_enough_confirmations() {
         "Transaction error: Transaction has not enough confirmations"
     );
 
-    ic.drop().await;
+    context.teardown_default().await;
 }
 
 #[tokio::test]
 async fn create_position() {
-    let (ic, siwe, bridge) = setup().await;
-    let (anvil, _, _, identity) = full_login_with_eth_registered(&ic, siwe, bridge, None).await;
-    let eth_pool_address = get_eth_pool_address(&ic, bridge, &identity).await;
-    let provider = ProviderBuilder::new().on_http(anvil.endpoint_url());
+    let mut context = Context::new();
+    let context = context.setup_default().await;
 
-    let tx = TransactionRequest::default()
-        .with_to(alloy::primitives::Address::parse_checksummed(eth_pool_address, None).unwrap())
-        .with_nonce(0)
-        .with_value(U256::from(100))
-        .with_gas_limit(21_000)
-        .with_max_priority_fee_per_gas(1_000_000_000)
-        .with_max_fee_per_gas(20_000_000_000);
-    let pending_tx = provider.send_transaction(tx).await.unwrap();
-    let tx_receipt = pending_tx.get_receipt().await.unwrap();
-    let tx_hash = format!("0x{}", hex::encode(tx_receipt.transaction_hash));
+    // Send some ETH to the eth pool address
+    let amount = 100;
+    let tx_hash = context.send_eth_to_pool_address(0, amount).await;
 
-    let _ = mine_blocks(&anvil, 15);
+    // Mine enough blocks to have the transaction confirmed
+    let _ = context.anvil_mine_blocks(15);
 
+    let ic = context.ic.as_ref().unwrap();
+    let (_, _, identity) = context.full_login_with_eth_registered(0, None).await;
     let call_id = ic
         .submit_call(
-            bridge,
+            context.bridge_canister,
             identity.sender().unwrap(),
             "eth_pool_create_position",
-            encode_one(tx_hash).unwrap(),
+            encode_one(tx_hash.clone()).unwrap(),
         )
         .await
         .unwrap();
-    tick(&ic, 2).await;
-    proxy_one_https_outcall(&ic, &anvil).await; // Transaction referenced by hash
-    tick(&ic, 5).await;
-    proxy_one_https_outcall(&ic, &anvil).await; // Latests block
+    context.tick(2).await;
+    context.proxy_one_https_outcall_to_anvil().await; // Transaction referenced by hash
+    context.tick(5).await;
+    context.proxy_one_https_outcall_to_anvil().await; // Latests block
     let response: RpcResult<EthPoolLiquidityPositionDto> =
-        await_call_and_decode(&ic, call_id).await;
+        context.await_call_and_decode(call_id).await;
 
-    dbg!(&response);
-    assert!(response.is_err());
+    assert!(response.is_ok());
+    let response = response.unwrap_ok();
+    assert_eq!(response.tx_hash, tx_hash);
+    assert_eq!(response.amount, amount.to_string());
 
-    ic.drop().await;
+    context.teardown_default().await;
 }
