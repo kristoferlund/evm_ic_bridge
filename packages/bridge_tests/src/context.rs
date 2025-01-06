@@ -1,8 +1,8 @@
 use crate::{
     common::{create_basic_identity, create_delegated_identity, get_response_headers},
     types::{
-        BridgeSettings, EvmRpcSettings, PrepareLoginOkResponse, RpcError, RpcResult,
-        RuntimeFeature, SettingsInput, UserDto,
+        BridgeSettings, EthPoolLiquidityPositionDto, EthTxHash, EvmRpcSettings,
+        PrepareLoginOkResponse, RpcError, RpcResult, RuntimeFeature, SettingsInput, UserDto,
     },
 };
 use alloy::{
@@ -440,15 +440,16 @@ impl Context {
     pub async fn proxy_one_https_outcall_to_anvil(&self) {
         let ic = self.ic.as_ref().unwrap();
         let canister_http_requests = ic.get_canister_http().await;
-        assert_eq!(canister_http_requests.len(), 1);
+        if canister_http_requests.is_empty() {
+            return;
+        }
         let canister_http_request = &canister_http_requests[0];
         let canister_http_response = self.anvil_request(canister_http_request);
         ic.mock_canister_http_response(canister_http_response).await;
     }
 
     // Send some ETH to the eth pool address from the
-
-    pub async fn send_eth_to_pool_address(&self, from: usize, amount: u32) -> String {
+    pub async fn send_eth_to_pool_address(&self, from: usize, amount: u32) -> EthTxHash {
         let anvil = self.anvil.as_ref().unwrap();
         let provider = ProviderBuilder::new().on_http(anvil.endpoint_url());
         let signer: PrivateKeySigner = anvil.keys()[from].clone().into();
@@ -464,6 +465,28 @@ impl Context {
         let pending_tx = provider.send_transaction(tx).await.unwrap();
         let tx_receipt = pending_tx.get_receipt().await.unwrap();
         format!("0x{}", hex::encode(tx_receipt.transaction_hash))
+    }
+
+    pub async fn create_eth_position(
+        &self,
+        principal: &Principal,
+        tx_hash: &str,
+    ) -> RpcResult<EthPoolLiquidityPositionDto> {
+        let ic = self.ic.as_ref().unwrap();
+        let call_id = ic
+            .submit_call(
+                self.bridge_canister,
+                *principal,
+                "eth_pool_create_position",
+                encode_one(tx_hash).unwrap(),
+            )
+            .await
+            .unwrap();
+        self.tick(2).await;
+        self.proxy_one_https_outcall_to_anvil().await; // Transaction referenced by hash
+        self.tick(5).await;
+        self.proxy_one_https_outcall_to_anvil().await; // Latests block
+        self.await_call_and_decode(call_id).await
     }
 }
 

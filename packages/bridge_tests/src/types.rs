@@ -116,3 +116,5 @@ pub struct PrepareLoginOkResponse {
     pub siwe_message: String,
     pub nonce: String,
 }
+
+pub type EthTxHash = String;
