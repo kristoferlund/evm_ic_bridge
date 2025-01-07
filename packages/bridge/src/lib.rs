@@ -1,3 +1,4 @@
+use ck_pool::CkPoolLiquidityPositionDto;
 use eth_pool::EthPoolLiquidityPositionDto;
 use event::event_types::Event;
 use http_error::HttpError;

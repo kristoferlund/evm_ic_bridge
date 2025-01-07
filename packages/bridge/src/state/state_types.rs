@@ -1,4 +1,5 @@
 use crate::{
+    ck_pool::ck_pool_types::CkPoolLiquidityPosition,
     eth_pool::EthPoolLiquidityPosition,
     user::user_types::{EthAddressBytes, User},
 };
@@ -25,4 +26,5 @@ pub struct State {
     pub last_claimed_fee_per_token: U256,
 
     pub eth_pool_liquidity_positions: HashMap<Principal, Vec<EthPoolLiquidityPosition>>,
+    pub ck_pool_liquidity_positions: HashMap<Principal, Vec<CkPoolLiquidityPosition>>,
 }

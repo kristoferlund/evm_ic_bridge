@@ -5,6 +5,18 @@ use candid::{self, CandidType, Deserialize, Principal, Encode, Decode};
 use ic_cdk::api::call::CallResult as Result;
 
 #[derive(Debug, CandidType, Deserialize, Clone)]
+pub struct ChangeArchiveOptions {
+  pub num_blocks_to_archive: Option<u64>,
+  pub max_transactions_per_response: Option<u64>,
+  pub trigger_threshold: Option<u64>,
+  pub more_controller_ids: Option<Vec<Principal>>,
+  pub max_message_size_bytes: Option<u64>,
+  pub cycles_for_archive_creation: Option<u64>,
+  pub node_max_memory_size_bytes: Option<u64>,
+  pub controller_id: Option<Principal>,
+}
+
+#[derive(Debug, CandidType, Deserialize, Clone)]
 pub enum MetadataValue {
   Int(candid::Int),
   Nat(candid::Nat),
@@ -24,10 +36,10 @@ pub struct FeatureFlags { pub icrc2: bool }
 
 #[derive(Debug, CandidType, Deserialize, Clone)]
 pub struct UpgradeArgs {
+  pub change_archive_options: Option<ChangeArchiveOptions>,
   pub token_symbol: Option<String>,
   pub transfer_fee: Option<candid::Nat>,
   pub metadata: Option<Vec<(String,MetadataValue,)>>,
-  pub maximum_number_of_accounts: Option<u64>,
   pub accounts_overflow_trim_quantity: Option<u64>,
   pub change_fee_collector: Option<ChangeFeeCollector>,
   pub max_memo_length: Option<u16>,
@@ -40,6 +52,7 @@ pub struct InitArgsArchiveOptions {
   pub num_blocks_to_archive: u64,
   pub max_transactions_per_response: Option<u64>,
   pub trigger_threshold: u64,
+  pub more_controller_ids: Option<Vec<Principal>>,
   pub max_message_size_bytes: Option<u64>,
   pub cycles_for_archive_creation: Option<u64>,
   pub node_max_memory_size_bytes: Option<u64>,
@@ -67,6 +80,13 @@ pub struct InitArgs {
 pub enum LedgerArg { Upgrade(Option<UpgradeArgs>), Init(InitArgs) }
 
 pub type BlockIndex = candid::Nat;
+#[derive(Debug, CandidType, Deserialize, Clone)]
+pub struct ArchiveInfo {
+  pub block_range_end: BlockIndex,
+  pub canister_id: Principal,
+  pub block_range_start: BlockIndex,
+}
+
 #[derive(Debug, CandidType, Deserialize, Clone)]
 pub struct GetBlocksArgs { pub start: BlockIndex, pub length: candid::Nat }
 
@@ -192,6 +212,9 @@ pub struct GetTransactionsResponse {
   >,
 }
 
+#[derive(Debug, CandidType, Deserialize, Clone)]
+pub struct Icrc10SupportedStandardsRetItem { pub url: String, pub name: String }
+
 pub type Tokens = candid::Nat;
 #[derive(Debug, CandidType, Deserialize, Clone)]
 pub struct StandardRecord { pub url: String, pub name: String }
@@ -220,6 +243,67 @@ pub enum TransferError {
 
 #[derive(Debug, CandidType, Deserialize, Clone)]
 pub enum TransferResult { Ok(BlockIndex), Err(TransferError) }
+
+#[derive(Debug, CandidType, Deserialize, Clone)]
+pub struct Icrc21ConsentMessageMetadata {
+  pub utc_offset_minutes: Option<i16>,
+  pub language: String,
+}
+
+#[derive(Debug, CandidType, Deserialize, Clone)]
+pub enum Icrc21ConsentMessageSpecDeviceSpecInner {
+  GenericDisplay,
+  LineDisplay{ characters_per_line: u16, lines_per_page: u16 },
+}
+
+#[derive(Debug, CandidType, Deserialize, Clone)]
+pub struct Icrc21ConsentMessageSpec {
+  pub metadata: Icrc21ConsentMessageMetadata,
+  pub device_spec: Option<Icrc21ConsentMessageSpecDeviceSpecInner>,
+}
+
+#[derive(Debug, CandidType, Deserialize, Clone)]
+pub struct Icrc21ConsentMessageRequest {
+  pub arg: serde_bytes::ByteBuf,
+  pub method: String,
+  pub user_preferences: Icrc21ConsentMessageSpec,
+}
+
+#[derive(Debug, CandidType, Deserialize, Clone)]
+pub struct Icrc21ConsentMessageLineDisplayMessagePagesItem {
+  pub lines: Vec<String>,
+}
+
+#[derive(Debug, CandidType, Deserialize, Clone)]
+pub enum Icrc21ConsentMessage {
+  LineDisplayMessage{
+    pages: Vec<Icrc21ConsentMessageLineDisplayMessagePagesItem>,
+  },
+  GenericDisplayMessage(String),
+}
+
+#[derive(Debug, CandidType, Deserialize, Clone)]
+pub struct Icrc21ConsentInfo {
+  pub metadata: Icrc21ConsentMessageMetadata,
+  pub consent_message: Icrc21ConsentMessage,
+}
+
+#[derive(Debug, CandidType, Deserialize, Clone)]
+pub struct Icrc21ErrorInfo { pub description: String }
+
+#[derive(Debug, CandidType, Deserialize, Clone)]
+pub enum Icrc21Error {
+  GenericError{ description: String, error_code: candid::Nat },
+  InsufficientPayment(Icrc21ErrorInfo),
+  UnsupportedCanisterCall(Icrc21ErrorInfo),
+  ConsentMessageUnavailable(Icrc21ErrorInfo),
+}
+
+#[derive(Debug, CandidType, Deserialize, Clone)]
+pub enum Icrc21ConsentMessageResponse {
+  Ok(Icrc21ConsentInfo),
+  Err(Icrc21Error),
+}
 
 #[derive(Debug, CandidType, Deserialize, Clone)]
 pub struct AllowanceArgs { pub account: Account, pub spender: Account }
@@ -285,8 +369,66 @@ pub enum TransferFromError {
 #[derive(Debug, CandidType, Deserialize, Clone)]
 pub enum TransferFromResult { Ok(BlockIndex), Err(TransferFromError) }
 
+#[derive(Debug, CandidType, Deserialize, Clone)]
+pub struct GetArchivesArgs { pub from: Option<Principal> }
+
+#[derive(Debug, CandidType, Deserialize, Clone)]
+pub struct GetArchivesResultItem {
+  pub end: candid::Nat,
+  pub canister_id: Principal,
+  pub start: candid::Nat,
+}
+
+pub type GetArchivesResult = Vec<GetArchivesResultItem>;
+#[derive(Debug, CandidType, Deserialize, Clone)]
+pub enum Icrc3Value {
+  Int(candid::Int),
+  Map(Vec<(String,Box<Icrc3Value>,)>),
+  Nat(candid::Nat),
+  Blob(serde_bytes::ByteBuf),
+  Text(String),
+  Array(Vec<Box<Icrc3Value>>),
+}
+
+#[derive(Debug, CandidType, Deserialize, Clone)]
+pub struct GetBlocksResultBlocksItem {
+  pub id: candid::Nat,
+  pub block: Box<Icrc3Value>,
+}
+
+candid::define_function!(pub GetBlocksResultArchivedBlocksItemCallback : (
+    Vec<GetBlocksArgs>,
+  ) -> (GetBlocksResult) query);
+#[derive(Debug, CandidType, Deserialize, Clone)]
+pub struct GetBlocksResultArchivedBlocksItem {
+  pub args: Vec<GetBlocksArgs>,
+  pub callback: GetBlocksResultArchivedBlocksItemCallback,
+}
+
+#[derive(Debug, CandidType, Deserialize, Clone)]
+pub struct GetBlocksResult {
+  pub log_length: candid::Nat,
+  pub blocks: Vec<GetBlocksResultBlocksItem>,
+  pub archived_blocks: Vec<GetBlocksResultArchivedBlocksItem>,
+}
+
+#[derive(Debug, CandidType, Deserialize, Clone)]
+pub struct Icrc3DataCertificate {
+  pub certificate: serde_bytes::ByteBuf,
+  pub hash_tree: serde_bytes::ByteBuf,
+}
+
+#[derive(Debug, CandidType, Deserialize, Clone)]
+pub struct Icrc3SupportedBlockTypesRetItem {
+  pub url: String,
+  pub block_type: String,
+}
+
 pub struct Icrc1Ledger(pub Principal);
 impl Icrc1Ledger {
+  pub async fn archives(&self) -> Result<(Vec<ArchiveInfo>,)> {
+    ic_cdk::call(self.0, "archives", ()).await
+  }
   pub async fn get_blocks(&self, arg0: GetBlocksArgs) -> Result<
     (GetBlocksResponse,)
   > { ic_cdk::call(self.0, "get_blocks", (arg0,)).await }
@@ -296,6 +438,9 @@ impl Icrc1Ledger {
   pub async fn get_transactions(&self, arg0: GetTransactionsRequest) -> Result<
     (GetTransactionsResponse,)
   > { ic_cdk::call(self.0, "get_transactions", (arg0,)).await }
+  pub async fn icrc_10_supported_standards(&self) -> Result<
+    (Vec<Icrc10SupportedStandardsRetItem>,)
+  > { ic_cdk::call(self.0, "icrc10_supported_standards", ()).await }
   pub async fn icrc_1_balance_of(&self, arg0: Account) -> Result<(Tokens,)> {
     ic_cdk::call(self.0, "icrc1_balance_of", (arg0,)).await
   }
@@ -326,6 +471,12 @@ impl Icrc1Ledger {
   pub async fn icrc_1_transfer(&self, arg0: TransferArg) -> Result<
     (TransferResult,)
   > { ic_cdk::call(self.0, "icrc1_transfer", (arg0,)).await }
+  pub async fn icrc_21_canister_call_consent_message(
+    &self,
+    arg0: Icrc21ConsentMessageRequest,
+  ) -> Result<(Icrc21ConsentMessageResponse,)> {
+    ic_cdk::call(self.0, "icrc21_canister_call_consent_message", (arg0,)).await
+  }
   pub async fn icrc_2_allowance(&self, arg0: AllowanceArgs) -> Result<
     (Allowance,)
   > { ic_cdk::call(self.0, "icrc2_allowance", (arg0,)).await }
@@ -335,6 +486,21 @@ impl Icrc1Ledger {
   pub async fn icrc_2_transfer_from(&self, arg0: TransferFromArgs) -> Result<
     (TransferFromResult,)
   > { ic_cdk::call(self.0, "icrc2_transfer_from", (arg0,)).await }
+  pub async fn icrc_3_get_archives(&self, arg0: GetArchivesArgs) -> Result<
+    (GetArchivesResult,)
+  > { ic_cdk::call(self.0, "icrc3_get_archives", (arg0,)).await }
+  pub async fn icrc_3_get_blocks(&self, arg0: Vec<GetBlocksArgs>) -> Result<
+    (GetBlocksResult,)
+  > { ic_cdk::call(self.0, "icrc3_get_blocks", (arg0,)).await }
+  pub async fn icrc_3_get_tip_certificate(&self) -> Result<
+    (Option<Icrc3DataCertificate>,)
+  > { ic_cdk::call(self.0, "icrc3_get_tip_certificate", ()).await }
+  pub async fn icrc_3_supported_block_types(&self) -> Result<
+    (Vec<Icrc3SupportedBlockTypesRetItem>,)
+  > { ic_cdk::call(self.0, "icrc3_supported_block_types", ()).await }
+  pub async fn is_ledger_ready(&self) -> Result<(bool,)> {
+    ic_cdk::call(self.0, "is_ledger_ready", ()).await
+  }
 }
 pub const CANISTER_ID : Principal = Principal::from_slice(&[0, 0, 0, 0, 2, 48, 0, 88, 1, 1]); // apia6-jaaaa-aaaar-qabma-cai
 pub const icrc1_ledger : Icrc1Ledger = Icrc1Ledger(CANISTER_ID);
