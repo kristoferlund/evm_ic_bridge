@@ -1,3 +1,4 @@
+use alloy::signers::k256::sha2::{Digest, Sha256};
 use candid::{Nat, Principal};
 
 use crate::{
@@ -7,6 +8,15 @@ use crate::{
 
 use super::ck_pool_types::{CkPoolError, CkPoolLiquidityPosition};
 use anyhow::{anyhow, Result};
+
+const CK_POOL_ACCOUNT_ID: &str = "ckpool";
+
+fn derive_subaccount(user_principal: &Principal, account_id: &str) -> [u8; 32] {
+    let mut data = Sha256::new();
+    data.update(user_principal.as_slice());
+    data.update(account_id.as_bytes());
+    data.finalize().into()
+}
 
 pub struct CkPoolManager {}
 // pub async fn create_position(
@@ -140,6 +150,40 @@ impl CkPoolManager {
         //verify that the transaction was sent to the canister address
         let to = get_value_by_key(tx, "to")
             .ok_or_else(|| anyhow!("Invalid tx format, 'to' not specified"))?;
+
+        match to {
+            Icrc3Value::Array(array) => {
+                if array.len() != 2 {
+                    return Err(anyhow!("Invalid tx format, 'to' should contain two values").into());
+                }
+
+                match &*array[0] {
+                    Icrc3Value::Blob(to_principal) => {
+                        let canister_principal = ic_cdk::api::id();
+                        if to_principal != canister_principal.as_slice() {
+                            return Err(
+                                anyhow!("Transaction not sent to canister principal").into()
+                            );
+                        }
+                    }
+                    _ => return Err(anyhow!("Invalid tx format, 'to.principal' not a blob").into()),
+                }
+
+                match &*array[1] {
+                    Icrc3Value::Blob(to_account) => {
+                        let user_pool_account =
+                            derive_subaccount(&user_principal, CK_POOL_ACCOUNT_ID);
+                        if to_account != &user_pool_account {
+                            return Err(anyhow!("Transaction not sent to user pool account").into());
+                        }
+                    }
+                    _ => return Err(anyhow!("Invalid tx format, 'to.account' not a blob").into()),
+                }
+            }
+            _ => return Err(anyhow!("Invalid tx format, 'to' not an array").into()),
+        }
+
+        // let caller = ic_cdk::caller();
 
         //TODO: Implement the rest of the function
 
